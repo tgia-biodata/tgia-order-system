@@ -1,0 +1,2747 @@
+import React, { useState, useRef } from 'react';
+import { AlertCircle, Download, Send, Plus, Edit3, Check, X, RotateCcw, Upload } from 'lucide-react';
+
+// ========== 簽名板組件 ==========
+const SignaturePad = ({ onSave, onCancel, title = "請簽名" }) => {
+  const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(true);
+  const [context, setContext] = useState(null);
+  const [uploadMode, setUploadMode] = useState('draw');
+
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    setContext(ctx);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, []);
+
+  const getCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(true);
+    setIsEmpty(false);
+    const { x, y } = getCoordinates(e);
+    context.beginPath();
+    context.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const { x, y } = getCoordinates(e);
+    context.lineTo(x, y);
+    context.stroke();
+  };
+
+  const stopDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(false);
+    context.closePath();
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    context.fillStyle = '#FFFFFF';
+    context.fillRect(0, 0, rect.width, rect.height);
+    setIsEmpty(true);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = canvasRef.current;
+          const rect = canvas.getBoundingClientRect();
+          context.fillStyle = '#FFFFFF';
+          context.fillRect(0, 0, rect.width, rect.height);
+          
+          const scale = Math.min(rect.width / img.width, rect.height / img.height);
+          const x = (rect.width - img.width * scale) / 2;
+          const y = (rect.height - img.height * scale) / 2;
+          
+          context.drawImage(img, x, y, img.width * scale, img.height * scale);
+          setIsEmpty(false);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const saveSignature = () => {
+    if (isEmpty) {
+      alert('請先簽名或上傳圖片');
+      return;
+    }
+    const canvas = canvasRef.current;
+    const signatureData = canvas.toDataURL('image/png');
+    onSave(signatureData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+        <div className="border-b px-6 py-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition">
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="p-6">
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setUploadMode('draw')}
+              className={`flex-1 py-2 px-4 rounded-lg transition ${
+                uploadMode === 'draw' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Edit3 size={16} className="inline mr-2" />
+              手寫簽名
+            </button>
+            <button
+              onClick={() => setUploadMode('upload')}
+              className={`flex-1 py-2 px-4 rounded-lg transition ${
+                uploadMode === 'upload' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Upload size={16} className="inline mr-2" />
+              上傳圖片
+            </button>
+          </div>
+
+          <div className="border-2 border-dashed border-gray-300 rounded-lg bg-white overflow-hidden">
+            <canvas
+              ref={canvasRef}
+              className="w-full touch-none cursor-crosshair"
+              style={{ height: '300px' }}
+              onMouseDown={uploadMode === 'draw' ? startDrawing : undefined}
+              onMouseMove={uploadMode === 'draw' ? draw : undefined}
+              onMouseUp={uploadMode === 'draw' ? stopDrawing : undefined}
+              onMouseLeave={uploadMode === 'draw' ? stopDrawing : undefined}
+              onTouchStart={uploadMode === 'draw' ? startDrawing : undefined}
+              onTouchMove={uploadMode === 'draw' ? draw : undefined}
+              onTouchEnd={uploadMode === 'draw' ? stopDrawing : undefined}
+            />
+          </div>
+          
+          {uploadMode === 'draw' ? (
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              💡 提示：使用滑鼠、觸控筆或手指在上方區域簽名
+            </p>
+          ) : (
+            <div className="mt-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-3 border-2 border-dashed border-blue-300 rounded-lg hover:bg-blue-50 transition text-blue-600 font-medium"
+              >
+                <Upload size={20} className="inline mr-2" />
+                點擊選擇圖片檔案
+              </button>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                支援 JPG、PNG 等圖片格式
+              </p>
+            </div>
+          )}
+        </div>
+        
+        <div className="border-t px-6 py-4 flex gap-3 justify-end">
+          <button
+            onClick={clearSignature}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+          >
+            <RotateCcw size={18} />
+            清除
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
+            取消
+          </button>
+          <button
+            onClick={saveSignature}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+          >
+            <Check size={18} />
+            確認簽名
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ========== 主表單組件 ==========
+const TGIAOrderForm = () => {
+  const [showOrgSuggestions, setShowOrgSuggestions] = useState(false);
+  const [filteredOrgs, setFilteredOrgs] = useState([]);
+  
+  const organizationOptions = [
+    '國立陽明交通大學',
+    '國立台灣大學',
+    '國立成功大學'
+  ];
+
+  const salesPersonOptions = [
+    '請選擇業務人員',
+    '張三',
+    '李四',
+    '王五'
+  ];
+
+  const [formData, setFormData] = useState({
+    salesPerson: '',
+    organization: '',
+    principalInvestigator: '',
+    contactPerson: '',
+    contactPhone: '',
+    email: '',
+    address: '',
+    invoiceTitle: '',
+    taxId: '',
+    invoiceCopies: '二聯式',
+    dataDeliveryMethod: 'HDD由專人遞送',
+    nchcAccount: '',
+    deliveryAddress: '',
+    recipient: '',
+    recipientPhone: '',
+    recipientEmail: '',
+    serviceItems: [{
+      category: '請選擇服務類別',
+      services: [{ service: '', quantity: '' }],
+      libraryType: '無',
+      seqSpec: ''
+    }],
+    sampleType: '無送樣',
+    sampleTypeOther: '',
+    libraryInfo: {
+      sampleSheet: [{
+        no: 1,
+        sampleName: '',
+        tubeLabel: '',
+        conc: '',
+        vol: '',
+        ngsConc: '',
+        expectedSeq: '',
+        note: ''
+      }],
+      runConfig: {
+        sequencer: '不限',
+        read1Length: '151bp',
+        read2Length: '151bp',
+        phiX: '1%'
+      },
+      librarySampleSheet: [{
+        no: 1,
+        sampleName: '',
+        libraryPrepKit: '',
+        indexAdapterKit: '',
+        setWellPosition: '',
+        index1Seq: '',
+        index2Seq: '',
+        note: '',
+        library: ''
+      }],
+      gelImage: ''
+    },
+    sampleInfo: {
+      sampleSheet: [{
+        no: 1,
+        sampleName: '',
+        tubeLabel: '',
+        expectedSeq: '',
+        concMethod: '',
+        conc: '',
+        vol: '',
+        ratio260280: '',
+        ratio260230: '',
+        dqnRqn: '',
+        note: ''
+      }]
+    },
+    preservationMethod: 'Nuclease-free H2O',
+    preservationMethodOther: '',
+    sampleCount: '',
+    species: '物種請選擇',
+    speciesOther: '',
+    shippingMethod: '冷凍(乾冰)',
+    shippingMethodOther: '',
+    sampleReturn: '不需要',
+    notes: '',
+    signature: null
+  });
+
+  const [submitted, setSubmitted] = useState(false);
+  const [message, setMessage] = useState('');
+  const [orderId, setOrderId] = useState('');
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteMode, setPasteMode] = useState('sampleSheet');
+  const [pasteData, setPasteData] = useState('');
+  const excelUploadRef = useRef(null);
+  const sampleExcelUploadRef = useRef(null);
+
+  const serviceCategories = [
+    '請選擇服務類別',
+    '定序服務 (S)',
+    '建庫服務 (L)',
+    '萃取/QC (Q)',
+    '分析服務 (A1)',
+    '分析服務 (A2)',
+    '分析服務 (A3)',
+    '借出試劑 (R)',
+    '實驗服務外包 (OS)',
+    '台基安WGS包套1',
+    '台基安WGS包套2',
+    '台基安WGS包套3',
+    '台基安WES包套1',
+    '台基安WES包套2',
+    '台基安WES包套3',
+    'RNAseq-Basic包套',
+    'RNAseq-Advanced包套'
+  ];
+
+  const serviceOptionsByCategory = {
+    '定序服務 (S)': [
+      'S-0000 無定序',
+      'S-G001 二代定序',
+      'S-G002 二代定序',
+      'S-LN01 二代定序',
+      'S-LN02 二代定序',
+      'S-LN03 二代定序',
+      'S-FC01 二代定序',
+      'S-FC02 二代定序',
+      'S-OS01 三代定序',
+      'S-OS02 三代定序',
+      'S-OS03 三代定序',
+      'S-OS04 內部使用'
+    ],
+    '建庫服務 (L)': [
+      'L-0000 無建庫',
+      'L-TA01 TAF 認證',
+      'L-TA02 TAF 認證',
+      'L-WE01 WES',
+      'L-WE02 WES',
+      'L-WE03 WES',
+      'L-WE04 WES',
+      'L-WG01 WGS',
+      'L-WG02 WGS',
+      'L-WG03 WGS',
+      'L-WG04 WGBS',
+      'L-TS01 TSO500',
+      'L-TS02 內部使用',
+      'L-TS03 TSO500',
+      'L-TS04 內部使用',
+      'L-DN01 內部使用',
+      'L-RN01 RNAseq',
+      'L-RN02 RNAseq',
+      'L-RN03 RNAseq',
+      'L-RN04 RNAseq',
+      'L-RN05 RNAseq',
+      'L-RN06 RNAseq',
+      'L-RN07 RNAseq',
+      'L-RN08 RNAseq',
+      'L-PB01 PacBio',
+      'L-PB02 PacBio',
+      'L-PB03 PacBio',
+      'L-PB04 PacBio',
+      'L-PB05 PacBio',
+      'L-PB06 PacBio',
+      'L-OS01 10x',
+      'L-OS02 10x',
+      'L-OS03 10x',
+      'L-OS04 10x',
+      'L-OS05 10x'
+    ],
+    '萃取/QC (Q)': [
+      'Q-0000 無萃取',
+      'Q-QC01 DNA QC',
+      'Q-QC02 DNA QC(PacBio)',
+      'Q-QC03 RNA QC',
+      'Q-QC04 RNA QC(PacBio)使用',
+      'Q-QC05 Library QC',
+      'Q-QC06 Library QC(PacBio)',
+      'Q-ED01 DNA萃取+QC - 血液、Buffy coat DNA萃取',
+      'Q-ED02 DNA萃取+QC - 細胞 DNA萃取' ,
+      'Q-ED03 DNA萃取+QC - 組織 DNA萃取',
+      'Q-ED04 DNA萃取+QC - 石蠟包埋 (FFPE) DNA萃取',
+      'Q-ED05 DNA萃取+QC - 血清(漿) cfDNA萃取',
+      'Q-ER01A RNA萃取+QC',
+      'Q-ER01B RNA萃取+QC',
+      'Q-ER02 RNA萃取+QC',
+      'Q-ER03 RNA萃取+QC',
+      'Q-ER04 RNA萃取+QC',
+      'Q-ER05 RNA萃取+QC'
+    ],
+    '分析服務 (A1)': [
+      'A101 Non (不分析)',
+      'A102 Fastq',
+      'A103 BCL',
+      'A104 UMI'
+    ],
+    '分析服務 (A2)': [
+      'A201 Non',
+      'A202 DRAGEN-Germline-XP',
+      'A203 DRAGEN-Somatic-XP',
+      'A204 RNAseq-Basic',
+      'A205 RNAseq-Advanced',
+      'A206 TSO500-Tissue',
+      'A207 TSO500-ctDNA',
+      'A208 miRNA',
+      'A209 ChIPseq',
+      'A210 CellRanger',
+      'A211 SpaceRanger',
+      'A212 scRNAseq-Standard',
+      'A213 CeleScope',
+      'A214 PacBio-16S',
+      'A215 PacBio-HumanWGS',
+      'A216 Transcriptome-de-novo',
+      'A217 ServiceHour',
+      'A218 DRAGEN-Germline-Server',
+      'A219 DRAGEN-Somatic-Server'
+    ],
+    '分析服務 (A3)': [
+      'A301 Non',
+      'A302 Geneyx-Report',
+      'A303 Geneyx-Report&Annotation-Germline',
+      'A304 Geneyx-Account',
+      'A305 Annotation-Germline',
+      'A306 Annotation-Germline&JointCalling',
+      'A307 Annotation-Somatic',
+      'A308 Annotation-Somatic-PCGR',
+      'A309 Annotation-Somatic-PCGR-maftools',
+      'A310 OGM-Geneyx-Report',
+      'A311 OGM-Geneyx-Account',
+      'A312 ICI-Report',
+      'A313 ICI-Account',
+      'A314 MagicBison',
+      'A315 SangerReport',
+      'A316 HLAtyping'
+    ],
+    '借出試劑 (R)': [
+      'R-M001',
+      'R-M002',
+      'R-M003',
+      'R-M004',
+      'R-M005',
+      'R-M006',
+      'R-M007',
+      'R-M008',
+      'R-M009',
+      'R-M010'
+    ],
+    '實驗服務外包 (OS)': [
+      'S-OS04 Sanger ',
+      'S-OS01',
+      'S-OS02',
+      'S-OS03',
+      'L-OS01',
+      'L-OS02',
+      'L-OS03',
+      'L-OS04',
+      'L-OS05'
+    ],
+    '台基安WGS包套1': ['AP01 Fastq'],
+    '台基安WGS包套2': ['AP02 Fastq'],
+    '台基安WGS包套3': ['AP03 Fastq'],
+    '台基安WES包套1': ['AP04 Fastq'],
+    '台基安WES包套2': ['AP05 Fastq'],
+    '台基安WES包套3': ['AP06 Fastq'],
+    'RNAseq-Basic包套': ['AP07 Fastq'],
+    'RNAseq-Advanced包套': ['AP08 Fastq']
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+    
+    if (name === 'organization') {
+      const filtered = organizationOptions.filter(org =>
+        org.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredOrgs(filtered);
+      setShowOrgSuggestions(value.length > 0 && filtered.length > 0);
+    }
+  };
+
+  const selectOrganization = (org) => {
+    setFormData(prev => ({ ...prev, organization: org }));
+    setShowOrgSuggestions(false);
+  };
+
+  const handleServiceItemChange = (index, field, value) => {
+    const newItems = [...formData.serviceItems];
+    newItems[index][field] = value;
+    if (field === 'category') {
+      newItems[index].services = [{ service: '', quantity: '' }];
+    }
+    setFormData(prev => ({ ...prev, serviceItems: newItems }));
+  };
+
+  const handleServiceChange = (itemIndex, serviceIndex, field, value) => {
+    const newItems = [...formData.serviceItems];
+    newItems[itemIndex].services[serviceIndex][field] = value;
+    setFormData(prev => ({ ...prev, serviceItems: newItems }));
+  };
+
+  const handleLibrarySampleSheetChange = (index, field, value) => {
+    const newSampleSheet = [...formData.libraryInfo.sampleSheet];
+    newSampleSheet[index][field] = value;
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        sampleSheet: newSampleSheet
+      }
+    }));
+  };
+
+  // 處理表格貼上事件 - Sample Sheet
+  const handleTablePaste = (e, startIndex) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const rows = pastedText.split('\n').filter(row => row.trim());
+    
+    const newSampleSheet = [...formData.libraryInfo.sampleSheet];
+    
+    rows.forEach((row, rowIndex) => {
+      const columns = row.split('\t');
+      const targetIndex = startIndex + rowIndex;
+      
+      // 如果需要新增行
+      while (targetIndex >= newSampleSheet.length) {
+        newSampleSheet.push({
+          no: newSampleSheet.length + 1,
+          sampleName: '',
+          tubeLabel: '',
+          conc: '',
+          vol: '',
+          ngsConc: '',
+          expectedSeq: '',
+          note: ''
+        });
+      }
+      
+      // 填充資料
+      if (columns.length >= 1) {
+        newSampleSheet[targetIndex] = {
+          no: targetIndex + 1,
+          sampleName: columns[0] || '',
+          tubeLabel: columns[1] || '',
+          conc: columns[2] || '',
+          vol: columns[3] || '',
+          ngsConc: columns[4] || '',
+          expectedSeq: columns[5] || '',
+          note: columns[6] || ''
+        };
+      }
+    });
+    
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        sampleSheet: newSampleSheet
+      }
+    }));
+    
+    setMessage(`已貼上 ${rows.length} 行資料`);
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const addLibrarySampleSheetRow = () => {
+    const newRow = {
+      no: formData.libraryInfo.sampleSheet.length + 1,
+      sampleName: '',
+      tubeLabel: '',
+      conc: '',
+      vol: '',
+      ngsConc: '',
+      expectedSeq: '',
+      note: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        sampleSheet: [...prev.libraryInfo.sampleSheet, newRow]
+      }
+    }));
+  };
+
+  const removeLibrarySampleSheetRow = (index) => {
+    if (formData.libraryInfo.sampleSheet.length === 1) {
+      alert('至少需要保留一行');
+      return;
+    }
+    const newSampleSheet = formData.libraryInfo.sampleSheet.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        sampleSheet: newSampleSheet
+      }
+    }));
+  };
+
+  const handleLibraryDetailChange = (index, field, value) => {
+    const newLibrarySheet = [...formData.libraryInfo.librarySampleSheet];
+    newLibrarySheet[index][field] = value;
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        librarySampleSheet: newLibrarySheet
+      }
+    }));
+  };
+
+  // 處理表格貼上事件 - Library Detail
+  const handleLibraryDetailTablePaste = (e, startIndex) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const rows = pastedText.split('\n').filter(row => row.trim());
+    
+    const newLibrarySheet = [...formData.libraryInfo.librarySampleSheet];
+    
+    rows.forEach((row, rowIndex) => {
+      const columns = row.split('\t');
+      const targetIndex = startIndex + rowIndex;
+      
+      // 如果需要新增行
+      while (targetIndex >= newLibrarySheet.length) {
+        newLibrarySheet.push({
+          no: newLibrarySheet.length + 1,
+          sampleName: '',
+          libraryPrepKit: '',
+          indexAdapterKit: '',
+          setWellPosition: '',
+          index1Seq: '',
+          index2Seq: '',
+          note: '',
+          library: ''
+        });
+      }
+      
+      // 填充資料，包括 library 欄位（即使是下拉選單也接受貼上的值）
+      if (columns.length >= 1) {
+        newLibrarySheet[targetIndex] = {
+          no: targetIndex + 1,
+          sampleName: columns[0] || '',
+          libraryPrepKit: columns[1] || '',
+          indexAdapterKit: columns[2] || '',
+          setWellPosition: columns[3] || '',
+          index1Seq: columns[4] || '',
+          index2Seq: columns[5] || '',
+          note: columns[6] || '',
+          library: columns[7] || ''  // 接受貼上的值
+        };
+      }
+    });
+    
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        librarySampleSheet: newLibrarySheet
+      }
+    }));
+    
+    setMessage(`已貼上 ${rows.length} 行資料`);
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const addLibraryDetailRow = () => {
+    const newRow = {
+      no: formData.libraryInfo.librarySampleSheet.length + 1,
+      sampleName: '',
+      libraryPrepKit: '',
+      indexAdapterKit: '',
+      setWellPosition: '',
+      index1Seq: '',
+      index2Seq: '',
+      note: '',
+      library: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        librarySampleSheet: [...prev.libraryInfo.librarySampleSheet, newRow]
+      }
+    }));
+  };
+
+  const removeLibraryDetailRow = (index) => {
+    if (formData.libraryInfo.librarySampleSheet.length === 1) {
+      alert('至少需要保留一行');
+      return;
+    }
+    const newLibrarySheet = formData.libraryInfo.librarySampleSheet.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        librarySampleSheet: newLibrarySheet
+      }
+    }));
+  };
+
+  // 下載 Library Sample Sheet 範本
+  const downloadTemplate = () => {
+    const csvContent = "序號,Sample_Name,Tube Label,Conc (ng/ul),Vol (uL),NGS上機濃度 (pM),預期定序量,備註\n1,,,,,,\n2,,,,,,\n3,,,,,,";
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Library_SampleSheet_Template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    setMessage('範本已下載');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  // 下載完整 Excel 範本
+  const downloadExcelTemplate = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      
+      // 創建 Sample Sheet
+      const sampleSheetData = [
+        ['序號', 'Sample_Name', 'Tube Label', 'Conc (ng/ul)', 'Vol (uL)', 'NGS上機濃度 (pM)', '預期定序量', '備註'],
+        [1, '', '', '', '', '', '', ''],
+        [2, '', '', '', '', '', '', ''],
+        [3, '', '', '', '', '', '', '']
+      ];
+      
+      // 創建 Library Sample Sheet
+      const librarySheetData = [
+        ['序號', 'Sample_Name', 'Library Prep Kit', 'Index Adapter Kit', 'Set-Well Position', 'Index 1 (i7)', 'Index 2 (i5)', '備註', 'Library'],
+        [1, '', '', '', '', '', '', '', ''],
+        [2, '', '', '', '', '', '', '', ''],
+        [3, '', '', '', '', '', '', '', '']
+      ];
+      
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.aoa_to_sheet(sampleSheetData);
+      const ws2 = XLSX.utils.aoa_to_sheet(librarySheetData);
+      
+      XLSX.utils.book_append_sheet(wb, ws1, 'Sample Sheet');
+      XLSX.utils.book_append_sheet(wb, ws2, 'Library Sample Sheet');
+      
+      XLSX.writeFile(wb, 'Library_Template.xlsx');
+      setMessage('Excel 範本已下載');
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      alert('下載失敗：' + error.message);
+    }
+  };
+
+  // 上傳 Excel 並自動帶入
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const XLSX = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      
+      // 讀取 Sample Sheet
+      const sampleSheetName = workbook.SheetNames.find(name => name.includes('Sample'));
+      if (sampleSheetName) {
+        const worksheet = workbook.Sheets[sampleSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        const newSampleSheet = [];
+        jsonData.forEach((row, index) => {
+          if (index > 0 && row.length > 1) {
+            newSampleSheet.push({
+              no: index,
+              sampleName: row[1] || '',
+              tubeLabel: row[2] || '',
+              conc: row[3] || '',
+              vol: row[4] || '',
+              ngsConc: row[5] || '',
+              expectedSeq: row[6] || '',
+              note: row[7] || ''
+            });
+          }
+        });
+        
+        if (newSampleSheet.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            libraryInfo: {
+              ...prev.libraryInfo,
+              sampleSheet: newSampleSheet
+            }
+          }));
+        }
+      }
+      
+      // 讀取 Library Sample Sheet
+      const librarySheetName = workbook.SheetNames.find(name => name.includes('Library'));
+      if (librarySheetName) {
+        const worksheet = workbook.Sheets[librarySheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        const newLibrarySheet = [];
+        jsonData.forEach((row, index) => {
+          if (index > 0 && row.length > 1) {
+            newLibrarySheet.push({
+              no: index,
+              sampleName: row[1] || '',
+              libraryPrepKit: row[2] || '',
+              indexAdapterKit: row[3] || '',
+              setWellPosition: row[4] || '',
+              index1Seq: row[5] || '',
+              index2Seq: row[6] || '',
+              note: row[7] || '',
+              library: row[8] || ''
+            });
+          }
+        });
+        
+        if (newLibrarySheet.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            libraryInfo: {
+              ...prev.libraryInfo,
+              librarySampleSheet: newLibrarySheet
+            }
+          }));
+        }
+      }
+      
+      setMessage('Excel 檔案已匯入');
+      setTimeout(() => setMessage(''), 2000);
+      e.target.value = '';
+    } catch (error) {
+      alert('上傳失敗：' + error.message);
+    }
+  };
+
+  // 清空 Sample Sheet
+  const clearSampleSheet = () => {
+    if (window.confirm('確定要清空所有 Sample Sheet 資料嗎？')) {
+      setFormData(prev => ({
+        ...prev,
+        libraryInfo: {
+          ...prev.libraryInfo,
+          sampleSheet: [{
+            no: 1,
+            sampleName: '',
+            tubeLabel: '',
+            conc: '',
+            vol: '',
+            ngsConc: '',
+            expectedSeq: '',
+            note: ''
+          }]
+        }
+      }));
+      setMessage('Sample Sheet 已清空');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  };
+
+  // 清空 Library Sample Sheet
+  const clearLibrarySheet = () => {
+    if (window.confirm('確定要清空所有 Library Sample Sheet 資料嗎？')) {
+      setFormData(prev => ({
+        ...prev,
+        libraryInfo: {
+          ...prev.libraryInfo,
+          librarySampleSheet: [{
+            no: 1,
+            sampleName: '',
+            libraryPrepKit: '',
+            indexAdapterKit: '',
+            setWellPosition: '',
+            index1Seq: '',
+            index2Seq: '',
+            note: '',
+            library: ''
+          }]
+        }
+      }));
+      setMessage('Library Sample Sheet 已清空');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  };
+
+  // ===== 非 Library 樣本處理函數 =====
+  
+  const handleSampleSheetChange = (index, field, value) => {
+    const newSampleSheet = [...formData.sampleInfo.sampleSheet];
+    newSampleSheet[index][field] = value;
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: newSampleSheet
+      }
+    }));
+  };
+
+  const handleSampleTablePaste = (e, startIndex) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const rows = pastedText.split('\n').filter(row => row.trim());
+    
+    const newSampleSheet = [...formData.sampleInfo.sampleSheet];
+    
+    rows.forEach((row, rowIndex) => {
+      const columns = row.split('\t');
+      const targetIndex = startIndex + rowIndex;
+      
+      while (targetIndex >= newSampleSheet.length) {
+        newSampleSheet.push({
+          no: newSampleSheet.length + 1,
+          sampleName: '',
+          tubeLabel: '',
+          expectedSeq: '',
+          conc: '',
+          vol: '',
+          ratio260280: '',
+          ratio260230: '',
+          dqnRqn: '',
+          note: ''
+        });
+      }
+      
+      if (columns.length >= 1) {
+        newSampleSheet[targetIndex] = {
+          no: targetIndex + 1,
+          sampleName: columns[0] || '',
+          tubeLabel: columns[1] || '',
+          expectedSeq: columns[2] || '',
+          conc: columns[3] || '',
+          vol: columns[4] || '',
+          ratio260280: columns[5] || '',
+          ratio260230 : columns[6] || '',
+          dqnRqn: columns[7] || '',
+          note: columns[8] || ''
+        };
+      }
+    });
+    
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: newSampleSheet
+      }
+    }));
+    
+    setMessage(`已貼上 ${rows.length} 行資料`);
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const addSampleSheetRow = () => {
+    const newRow = {
+      no: formData.sampleInfo.sampleSheet.length + 1,
+      sampleName: '',
+      tubeLabel: '',
+      conc: '',
+      vol: '',
+      note: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: [...prev.sampleInfo.sampleSheet, newRow]
+      }
+    }));
+  };
+
+  const removeSampleSheetRow = (index) => {
+    if (formData.sampleInfo.sampleSheet.length === 1) {
+      alert('至少需要保留一行');
+      return;
+    }
+    const newSampleSheet = formData.sampleInfo.sampleSheet.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: newSampleSheet
+      }
+    }));
+  };
+
+  const clearSampleInfoSheet = () => {
+    if (window.confirm('確定要清空所有樣本資料嗎？')) {
+      setFormData(prev => ({
+        ...prev,
+        sampleInfo: {
+          sampleSheet: [{
+            no: 1,
+            sampleName: '',
+            tubeLabel: '',
+            conc: '',
+            vol: '',
+            note: ''
+          }]
+        }
+      }));
+      setMessage('樣本資料已清空');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  };
+
+  const downloadSampleTemplate = () => {
+    const csvContent = "序號,Sample_Name,Tube Label,Conc (ng/ul),Vol (uL),備註\n1,,,,,\n2,,,,,\n3,,,,,";
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Sample_Template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    setMessage('範本已下載');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const downloadSampleExcelTemplate = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      
+      const sampleSheetData = [
+        ['序號', 'Sample_Name', 'Tube Label', 'Conc (ng/ul)', 'Vol (uL)', '備註'],
+        [1, '', '', '', '', ''],
+        [2, '', '', '', '', ''],
+        [3, '', '', '', '', '']
+      ];
+      
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sampleSheetData);
+      
+      XLSX.utils.book_append_sheet(wb, ws, 'Sample Sheet');
+      XLSX.writeFile(wb, `${formData.sampleType}_Sample_Template.xlsx`);
+      setMessage('Excel 範本已下載');
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      alert('下載失敗：' + error.message);
+    }
+  };
+
+  const handleSampleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const XLSX = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      
+      const sampleSheetName = workbook.SheetNames[0];
+      if (sampleSheetName) {
+        const worksheet = workbook.Sheets[sampleSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        const newSampleSheet = [];
+        jsonData.forEach((row, index) => {
+          if (index > 0 && row.length > 1) {
+            newSampleSheet.push({
+              no: index,
+              sampleName: row[1] || '',
+              tubeLabel: row[2] || '',
+              conc: row[3] || '',
+              vol: row[4] || '',
+              note: row[5] || ''
+            });
+          }
+        });
+        
+        if (newSampleSheet.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            sampleInfo: {
+              sampleSheet: newSampleSheet
+            }
+          }));
+        }
+      }
+      
+      setMessage('Excel 檔案已匯入');
+      setTimeout(() => setMessage(''), 2000);
+      e.target.value = '';
+    } catch (error) {
+      alert('上傳失敗：' + error.message);
+    }
+  };
+
+  // 下載 Library Detail 範本
+  const downloadLibraryDetailTemplate = () => {
+    const csvContent = "序號,Sample_Name,Library Prep Kit,Index Adapter Kit,Set-Well Position,Index 1 (i7),Index 2 (i5),備註,Library\n1,,,,,,,\n2,,,,,,,\n3,,,,,,,";
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Library_Detail_Template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    setMessage('範本已下載');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  // 處理 Library Detail 貼上資料
+  const handlePasteLibraryDetail = () => {
+    if (!pasteData.trim()) {
+      alert('請先貼上資料');
+      return;
+    }
+
+    try {
+      const rows = pasteData.trim().split('\n');
+      const newLibrarySheet = [];
+
+      rows.forEach((row, index) => {
+        const columns = row.split('\t');
+        if (columns.length >= 8 && index > 0) {
+          newLibrarySheet.push({
+            no: index,
+            sampleName: columns[1] || '',
+            libraryPrepKit: columns[2] || '',
+            indexAdapterKit: columns[3] || '',
+            setWellPosition: columns[4] || '',
+            index1Seq: columns[5] || '',
+            index2Seq: columns[6] || '',
+            note: columns[7] || '',
+            library: columns[8] || ''
+          });
+        }
+      });
+
+      if (newLibrarySheet.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          libraryInfo: {
+            ...prev.libraryInfo,
+            librarySampleSheet: newLibrarySheet
+          }
+        }));
+        setShowPasteModal(false);
+        setPasteData('');
+        setMessage(`成功匯入 ${newLibrarySheet.length} 筆資料`);
+        setTimeout(() => setMessage(''), 2000);
+      } else {
+        alert('無法解析資料，請確認格式正確');
+      }
+    } catch (error) {
+      alert('資料格式錯誤：' + error.message);
+    }
+  };
+
+  // 處理 Excel 貼上資料
+  const handlePasteData = () => {
+    if (!pasteData.trim()) {
+      alert('請先貼上資料');
+      return;
+    }
+
+    if (pasteMode === 'sampleSheet') {
+      handlePasteSampleSheet();
+    } else {
+      handlePasteLibraryDetail();
+    }
+  };
+
+  const handlePasteSampleSheet = () => {
+    try {
+      const rows = pasteData.trim().split('\n');
+      const newSampleSheet = [];
+
+      rows.forEach((row, index) => {
+        const columns = row.split('\t');
+        if (columns.length >= 7 && index > 0) {
+          newSampleSheet.push({
+            no: index,
+            sampleName: columns[1] || '',
+            tubeLabel: columns[2] || '',
+            conc: columns[3] || '',
+            vol: columns[4] || '',
+            ngsConc: columns[5] || '',
+            expectedSeq: columns[6] || '',
+            note: columns[7] || ''
+          });
+        }
+      });
+
+      if (newSampleSheet.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          libraryInfo: {
+            ...prev.libraryInfo,
+            sampleSheet: newSampleSheet
+          }
+        }));
+        setShowPasteModal(false);
+        setPasteData('');
+        setMessage(`成功匯入 ${newSampleSheet.length} 筆資料`);
+        setTimeout(() => setMessage(''), 2000);
+      } else {
+        alert('無法解析資料，請確認格式正確');
+      }
+    } catch (error) {
+      alert('資料格式錯誤：' + error.message);
+    }
+  };
+
+  // 處理檔案上傳
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const Papa = await import('papaparse');
+      
+      Papa.parse(file, {
+        complete: (results) => {
+          const data = results.data;
+          const newSampleSheet = [];
+
+          data.forEach((row, index) => {
+            if (index > 0 && row.length >= 7) { // 跳過標題行
+              newSampleSheet.push({
+                no: index,
+                sampleName: row[1] || '',
+                tubeLabel: row[2] || '',
+                conc: row[3] || '',
+                vol: row[4] || '',
+                ngsConc: row[5] || '',
+                expectedSeq: row[6] || '',
+                note: row[7] || ''
+              });
+            }
+          });
+
+          if (newSampleSheet.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              libraryInfo: {
+                ...prev.libraryInfo,
+                sampleSheet: newSampleSheet
+              }
+            }));
+            setMessage(`成功匯入 ${newSampleSheet.length} 筆資料`);
+            setTimeout(() => setMessage(''), 2000);
+          }
+        },
+        error: (error) => {
+          alert('檔案讀取失敗：' + error.message);
+        }
+      });
+    } catch (error) {
+      alert('上傳失敗：' + error.message);
+    }
+  };
+
+  const addService = (itemIndex) => {
+    const newItems = [...formData.serviceItems];
+    newItems[itemIndex].services.push({ service: '', quantity: '' });
+    setFormData(prev => ({ ...prev, serviceItems: newItems }));
+  };
+
+  const removeService = (itemIndex, serviceIndex) => {
+    const newItems = [...formData.serviceItems];
+    if (newItems[itemIndex].services.length === 1) {
+      alert('至少需要保留一項服務品項');
+      return;
+    }
+    newItems[itemIndex].services = newItems[itemIndex].services.filter((_, i) => i !== serviceIndex);
+    setFormData(prev => ({ ...prev, serviceItems: newItems }));
+  };
+
+  const addServiceItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      serviceItems: [...prev.serviceItems, {
+        category: '請選擇服務類別',
+        services: [{ service: '', quantity: '' }],
+        libraryType: '無',
+        seqSpec: ''
+      }]
+    }));
+  };
+
+  const removeServiceItem = (index) => {
+    if (formData.serviceItems.length === 1) {
+      alert('至少需要保留一組服務類別');
+      return;
+    }
+    const newItems = formData.serviceItems.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, serviceItems: newItems }));
+  };
+
+  const handleSignatureSave = (signatureData) => {
+    setFormData(prev => ({ ...prev, signature: signatureData }));
+    setShowSignaturePad(false);
+    setMessage('簽名已保存');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const handleSignatureCancel = () => {
+    setShowSignaturePad(false);
+  };
+
+  const clearSignature = () => {
+    setFormData(prev => ({ ...prev, signature: null }));
+    setMessage('簽名已清除');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.organization || !formData.contactPerson || !formData.email) {
+      setMessage('請填寫所有必填欄位（標 * 者）');
+      return;
+    }
+    
+    if (!formData.signature) {
+      setMessage('請先簽名確認訂單內容');
+      return;
+    }
+    
+    try {
+      const response = await fetch('http://192.168.60.62:3001/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setSubmitted(true);
+        setOrderId(result.orderId);
+        setMessage(`訂單已成功提交！訂單編號：${result.orderId}`);
+        setTimeout(() => {
+          setSubmitted(false);
+        }, 5000);
+      } else {
+        setMessage('提交失敗：' + result.error);
+      }
+    } catch (error) {
+      setMessage('提交失敗：' + error.message);
+    }
+  };
+
+  const exportToExcel = async () => {
+    if (!orderId) {
+      setMessage('請先提交訂單才能匯出 Excel');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://192.168.60.62:3001/api/orders/${orderId}/export`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TGIA_Order_${orderId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setMessage('Excel 檔案下載成功');
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage('匯出失敗：' + error.message);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        <div className="text-center mb-8 border-b pb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            台基盟生技股份有限公司
+          </h1>
+          <h2 className="text-xl text-gray-600 mb-4">
+            委託服務同意書/訂購確認單
+          </h2>
+          <div className="flex justify-between text-sm text-gray-500">
+            <span>正常單</span>
+            <span className="text-red-600">標 * 為必填之欄位</span>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          {/* 基本資訊 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                業務人員 <span className="text-red-600">*</span>
+              </label>
+              <select
+                name="salesPerson"
+                value={formData.salesPerson}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {salesPersonOptions.map((person, index) => (
+                  <option key={index} value={person}>{person}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                填寫日期
+              </label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                defaultValue={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          </div>
+
+          {/* 基本資訊 - 大框 */}
+          <div className="border-2 border-gray-400 rounded-lg p-6 bg-white shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 pb-3 border-b-2 border-gray-300">
+              基本資訊
+            </h2>
+
+            {/* 1. 委託人資訊 */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
+                1. 委託人資訊
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    單位 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="organization"
+                    value={formData.organization}
+                    onChange={handleInputChange}
+                    onFocus={() => {
+                      if (formData.organization) {
+                        const filtered = organizationOptions.filter(org =>
+                          org.toLowerCase().includes(formData.organization.toLowerCase())
+                        );
+                        setFilteredOrgs(filtered);
+                        setShowOrgSuggestions(filtered.length > 0);
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowOrgSuggestions(false), 200)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="例：國立陽明交通大學"
+                  />
+                  {showOrgSuggestions && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredOrgs.map((org, index) => (
+                        <div
+                          key={index}
+                          onClick={() => selectOrganization(org)}
+                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                        >
+                          {org}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    負責人/主持人 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="principalInvestigator"
+                    value={formData.principalInvestigator}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    聯絡人 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="contactPerson"
+                    value={formData.contactPerson}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    聯絡電話 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="contactPhone"
+                    value={formData.contactPhone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="886-2-2826-7319"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="example@nycu.edu.tw"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    地址
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 發票資訊 */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
+                發票資訊
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    抬頭
+                  </label>
+                  <input
+                    type="text"
+                    name="invoiceTitle"
+                    value={formData.invoiceTitle}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    統編
+                  </label>
+                  <input
+                    type="text"
+                    name="taxId"
+                    value={formData.taxId}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    maxLength={8}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    發票聯數
+                  </label>
+                  <select
+                    name="invoiceCopies"
+                    value={formData.invoiceCopies}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option>二聯式</option>
+                    <option>三聯式</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 數據交付資訊 */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
+                數據交付資訊
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    數據提供方式 <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    name="dataDeliveryMethod"
+                    value={formData.dataDeliveryMethod}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option>HDD由專人遞送</option>
+                    <option>國網中心下載</option>
+                    <option>雲端下載</option>
+                    <option>sFTP下載</option>
+                  </select>
+                </div>
+                
+                {formData.dataDeliveryMethod === '國網中心下載' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      數據下載國網帳號
+                    </label>
+                    <input
+                      type="text"
+                      name="nchcAccount"
+                      value={formData.nchcAccount}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      placeholder="請輸入國網中心帳號"
+                    />
+                  </div>
+                )}
+                
+                {formData.dataDeliveryMethod === 'HDD由專人遞送' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        數據硬碟交貨地址
+                      </label>
+                      <input
+                        type="text"
+                        name="deliveryAddress"
+                        value={formData.deliveryAddress}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        placeholder="請填寫郵遞區號"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          收件人
+                        </label>
+                        <input
+                          type="text"
+                          name="recipient"
+                          value={formData.recipient}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          電話
+                        </label>
+                        <input
+                          type="tel"
+                          name="recipientPhone"
+                          value={formData.recipientPhone}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          name="recipientEmail"
+                          value={formData.recipientEmail}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 2. 委託內容 */}
+          <div className="border-2 border-gray-400 rounded-lg p-6 bg-white shadow-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 pb-3 border-b-2 border-gray-300">
+              2. 委託內容
+            </h3>
+            {formData.serviceItems.map((item, index) => (
+              <div key={index} className="mb-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 relative">
+                {formData.serviceItems.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeServiceItem(index)}
+                    className="absolute top-2 right-2 p-2 text-red-500 hover:bg-red-50 rounded-lg transition z-10 border border-red-300"
+                    title="移除此服務類別組"
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+                
+                <div className="mb-2 text-sm font-semibold text-gray-600">
+                  服務類別組 #{index + 1}
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      服務類別 <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      value={item.category}
+                      onChange={(e) => handleServiceItemChange(index, 'category', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    >
+                      {serviceCategories.map((cat, i) => (
+                        <option key={i} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {item.category && item.category !== '請選擇服務類別' && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">
+                          服務品項與數量 <span className="text-red-600">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => addService(index)}
+                          className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 px-3 py-1 rounded hover:bg-blue-50"
+                        >
+                          <Plus size={16} />
+                          新增品項
+                        </button>
+                      </div>
+                      
+                      {item.services.map((serviceItem, serviceIndex) => (
+                        <div key={serviceIndex} className="flex gap-2 items-start bg-white p-3 rounded border border-gray-200">
+                          <div className="flex-1">
+                            <select
+                              value={serviceItem.service}
+                              onChange={(e) => handleServiceChange(index, serviceIndex, 'service', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">請選擇服務品項</option>
+                              {serviceOptionsByCategory[item.category]?.map((opt, i) => (
+                                <option key={i} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              value={serviceItem.quantity}
+                              onChange={(e) => handleServiceChange(index, serviceIndex, 'quantity', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                              placeholder="數量"
+                              min="1"
+                            />
+                          </div>
+                          {item.services.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeService(index, serviceIndex)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded transition"
+                              title="移除此品項"
+                            >
+                              <X size={18} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        建庫種類
+                      </label>
+                      <input
+                        type="text"
+                        value={item.libraryType}
+                        onChange={(e) => handleServiceItemChange(index, 'libraryType', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        定序規格
+                      </label>
+                      <input
+                        type="text"
+                        value={item.seqSpec}
+                        onChange={(e) => handleServiceItemChange(index, 'seqSpec', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        placeholder="例：PE150; 1T+/-10%; Q30>= 80±5%"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addServiceItem}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium px-4 py-2 rounded hover:bg-blue-50"
+            >
+              <Plus size={16} />
+              新增服務類別組
+            </button>
+          </div>
+
+          {/* 送測樣品資訊 */}
+          <div className="border-2 border-gray-400 rounded-lg p-6 bg-white shadow-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 pb-3 border-b-2 border-gray-300">
+              送測樣品資訊
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  樣品類型 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="sampleType"
+                  value={formData.sampleType}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>無送樣</option>  
+                  <option>Library</option>
+                  <option>DNA</option>
+                  <option>RNA</option>
+                  <option>Cell</option>
+                  <option>Blood</option>
+                  <option>其他</option>
+                </select>
+                {formData.sampleType === '其他' && (
+                  <input
+                    type="text"
+                    name="sampleTypeOther"
+                    value={formData.sampleTypeOther}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                    placeholder="請說明樣品類型"
+                  />
+                )}
+              </div>
+              
+              {/* Library 專屬欄位 */}
+              {formData.sampleType === 'Library' && (
+                <div className="col-span-2 mt-4 border-2 border-blue-300 rounded-lg p-6 bg-blue-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-bold text-gray-800">Library 送件資訊</h4>
+                    <div className="flex gap-2">
+                      <input
+                        ref={excelUploadRef}
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleExcelUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={downloadExcelTemplate}
+                        className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-3 py-2 rounded hover:bg-green-50 border border-green-300"
+                      >
+                        <Download size={14} />
+                        下載 Excel 範本
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => excelUploadRef.current?.click()}
+                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-3 py-2 rounded hover:bg-blue-50 border border-blue-300"
+                      >
+                        <Upload size={14} />
+                        上傳 Excel
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mb-4 text-xs text-gray-600 bg-blue-50 p-2 rounded border border-blue-200">
+                    📌 使用說明：
+                    <br/>• 點擊「下載 Excel 範本」取得包含兩個工作表的範本檔案
+                    <br/>• 在範本中填寫 Sample Sheet 和 Library Sample Sheet 資料
+                    <br/>• 點擊「上傳 Excel」自動匯入兩個表格的資料
+                    <br/>• 也可以使用各表格上的「貼上資料」功能單獨匯入
+                  </div>
+                  
+                  {/* 2. Sample Sheet */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-gray-700">2. Sample Sheet</h5>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={downloadTemplate}
+                          className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-green-50 border border-green-300"
+                        >
+                          <Download size={14} />
+                          下載範本
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPasteMode('sampleSheet');
+                            setShowPasteModal(true);
+                          }}
+                          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-purple-50 border border-purple-300"
+                        >
+                          📋 貼上資料
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearSampleSheet}
+                          className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                        >
+                          <RotateCcw size={14} />
+                          清空
+                        </button>
+                        <button
+                          type="button"
+                          onClick={addLibrarySampleSheetRow}
+                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                        >
+                          <Plus size={14} />
+                          新增樣本
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mb-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                      💡 提示：
+                      <br/>• 複製 Excel 資料前，請先確認沒有合併的儲存格
+                      <br/>• 從 Sample_Name 欄位開始複製（不含序號和標題）
+                      <br/>• Library 欄位可輸入或從下拉選單選擇（建議來自 Sample Sheet 的 Sample Name）
+                      <br/>• 複製貼上時 Library 欄位也會自動填入
+                      <br/>• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border p-2">序號</th>
+                            <th className="border p-2">Sample_Name*</th>
+                            <th className="border p-2">Tube Label*</th>
+                            <th className="border p-2">Conc* (ng/ul)</th>
+                            <th className="border p-2">Vol* (uL)</th>
+                            <th className="border p-2">NGS上機濃度 (pM)</th>
+                            <th className="border p-2">預期定序量</th>
+                            <th className="border p-2">備註</th>
+                            <th className="border p-2">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody onPaste={(e) => handleTablePaste(e, 0)}>
+                          {formData.libraryInfo.sampleSheet.map((row, idx) => (
+                            <tr key={idx} className="bg-white">
+                              <td className="border p-2 text-center">{idx + 1}</td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.sampleName}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'sampleName', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.tubeLabel}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'tubeLabel', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="number"
+                                  value={row.conc}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'conc', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="number"
+                                  value={row.vol}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'vol', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="number"
+                                  value={row.ngsConc}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'ngsConc', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="number"
+                                  value={row.expectedSeq}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'expectedSeq', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.note}
+                                  onChange={(e) => handleLibrarySampleSheetChange(idx, 'note', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded"
+                                />
+                              </td>
+                              <td className="border p-2 text-center">
+                                {formData.libraryInfo.sampleSheet.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeLibrarySampleSheetRow(idx)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                   
+                    </div>
+                  </div>
+
+                  {/* 3. Run Configuration */}
+                  <div className="mb-6">
+                    <h5 className="font-semibold text-gray-700 mb-3">3. Run Configuration</h5>
+                    <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">定序機型</label>
+                        <input
+                          type="text"
+                          value={formData.libraryInfo.runConfig.sequencer}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            libraryInfo: {
+                              ...prev.libraryInfo,
+                              runConfig: { ...prev.libraryInfo.runConfig, sequencer: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border rounded"
+                          placeholder="不限"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Read 1 Length (bp)*</label>
+                        <input
+                          type="text"
+                          value={formData.libraryInfo.runConfig.read1Length}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            libraryInfo: {
+                              ...prev.libraryInfo,
+                              runConfig: { ...prev.libraryInfo.runConfig, read1Length: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Read 2 Length (bp)*</label>
+                        <input
+                          type="text"
+                          value={formData.libraryInfo.runConfig.read2Length}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            libraryInfo: {
+                              ...prev.libraryInfo,
+                              runConfig: { ...prev.libraryInfo.runConfig, read2Length: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">phiX (%)</label>
+                        <input
+                          type="text"
+                          value={formData.libraryInfo.runConfig.phiX}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            libraryInfo: {
+                              ...prev.libraryInfo,
+                              runConfig: { ...prev.libraryInfo.runConfig, phiX: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border rounded"
+                          placeholder="1%"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5. Library Sample Sheet */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-gray-700">5. Library Sample Sheet</h5>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={downloadLibraryDetailTemplate}
+                          className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-green-50 border border-green-300"
+                        >
+                          <Download size={14} />
+                          下載範本
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPasteMode('libraryDetail');
+                            setShowPasteModal(true);
+                          }}
+                          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-purple-50 border border-purple-300"
+                        >
+                          📋 貼上資料
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearLibrarySheet}
+                          className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                        >
+                          <RotateCcw size={14} />
+                          清空
+                        </button>
+                        <button
+                          type="button"
+                          onClick={addLibraryDetailRow}
+                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                        >
+                          <Plus size={14} />
+                          新增Library
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mb-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                      💡 提示：
+                      <br/>• 複製 Excel 資料前，請先確認沒有合併的儲存格
+                      <br/>• 從 Sample_Name 欄位開始複製（不含序號和標題）
+                      <br/>• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border p-2">序號</th>
+                            <th className="border p-2">Sample_Name*</th>
+                            <th className="border p-2">Library Prep Kit*</th>
+                            <th className="border p-2">Index Adapter Kit</th>
+                            <th className="border p-2">Set-Well Position</th>
+                            <th className="border p-2">Index 1 (i7)*</th>
+                            <th className="border p-2">Index 2 (i5)*</th>
+                            <th className="border p-2">備註</th>
+                            <th className="border p-2">Library</th>
+                            <th className="border p-2">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody onPaste={(e) => handleLibraryDetailTablePaste(e, 0)}>
+                          {formData.libraryInfo.librarySampleSheet.map((row, idx) => (
+                            <tr key={idx} className="bg-white">
+                              <td className="border p-2 text-center">{idx + 1}</td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.sampleName}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'sampleName', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.libraryPrepKit}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'libraryPrepKit', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.indexAdapterKit}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'indexAdapterKit', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.setWellPosition}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'setWellPosition', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.index1Seq}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'index1Seq', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.index2Seq}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'index2Seq', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  value={row.note}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'note', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </td>
+                              <td className="border p-2">
+                                <input
+                                  type="text"
+                                  list={`library-options-${idx}`}
+                                  value={row.library}
+                                  onChange={(e) => handleLibraryDetailChange(idx, 'library', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                  placeholder="輸入或選擇"
+                                />
+                                <datalist id={`library-options-${idx}`}>
+                                  {formData.libraryInfo.sampleSheet.map((sample, sIdx) => (
+                                    sample.sampleName && (
+                                      <option key={sIdx} value={sample.sampleName} />
+                                    )
+                                  ))}
+                                </datalist>
+                              </td>
+                              <td className="border p-2 text-center">
+                                {formData.libraryInfo.librarySampleSheet.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeLibraryDetailRow(idx)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 6. 電泳膠圖 */}
+                  <div>
+                    <h5 className="font-semibold text-gray-700 mb-3">6. 電泳膠圖</h5>
+                    <textarea
+                      value={formData.libraryInfo.gelImage}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        libraryInfo: { ...prev.libraryInfo, gelImage: e.target.value }
+                      }))}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                      placeholder="請描述電泳膠圖資訊或上傳圖片連結"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {formData.sampleType !== 'Library'  && formData.sampleType !== '無送樣' && (
+                <div className="col-span-2 mt-4 border-2 border-green-300 rounded-lg p-6 bg-green-50">
+                  <h4 className="text-lg font-bold text-gray-800 mb-4">{formData.sampleType} 送件資訊</h4>
+                  
+                  <div className="mb-4 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                    💡 提示：
+                    <br/>• Sample_Name 勿用數字開頭，不能空格，僅允許"-"、"_"符號
+                    <br/>• 測定方法請選擇 Qubit 或 Nanodrop
+                    <br/>• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+                  </div>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="font-semibold text-gray-700">樣本資訊</h5>
+                    <button
+                      type="button"
+                      onClick={addSampleSheetRow}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                    >
+                      <Plus size={14} />
+                      新增樣本
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border p-2">序號</th>
+                          <th className="border p-2">Sample_Name*</th>
+                          <th className="border p-2">Tube Label*</th>
+                          <th className="border p-2">預期定序量</th>                        
+                          <th className="border p-2">Conc* (ng/ul)</th>
+                          <th className="border p-2">Vol* (uL)</th>
+                          <th className="border p-2">260/280</th>
+                          <th className="border p-2">260/230</th>
+                          <th className="border p-2">DQN/RQN</th>
+                          <th className="border p-2">備註</th>
+                          <th className="border p-2">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody onPaste={(e) => handleSampleTablePaste(e, 0)}>
+                        {formData.sampleInfo.sampleSheet.map((row, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="border p-2 text-center">{idx + 1}</td>
+                            <td className="border p-2">
+                              <input
+                                type="text"
+                                value={row.sampleName}
+                                onChange={(e) => handleSampleSheetChange(idx, 'sampleName', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                                placeholder="勿用數字開頭"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="text"
+                                value={row.tubeLabel}
+                                onChange={(e) => handleSampleSheetChange(idx, 'tubeLabel', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="text"
+                                value={row.expectedSeq}
+                                onChange={(e) => handleSampleSheetChange(idx, 'expectedSeq', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+ 
+                            <td className="border p-2">
+                              <input
+                                type="number"
+                                value={row.conc}
+                                onChange={(e) => handleSampleSheetChange(idx, 'conc', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="number"
+                                value={row.vol}
+                                onChange={(e) => handleSampleSheetChange(idx, 'vol', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={row.ratio260280}
+                                onChange={(e) => handleSampleSheetChange(idx, 'ratio260280', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={row.ratio260230}
+                                onChange={(e) => handleSampleSheetChange(idx, 'ratio260230', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={row.dqnRqn}
+                                onChange={(e) => handleSampleSheetChange(idx, 'dqnRqn', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2">
+                              <input
+                                type="text"
+                                value={row.note}
+                                onChange={(e) => handleSampleSheetChange(idx, 'note', e.target.value)}
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            </td>
+                            <td className="border p-2 text-center">
+                              {formData.sampleInfo.sampleSheet.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeSampleSheetRow(idx)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <X size={16} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                          
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              ---
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  保存方式 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="preservationMethod"
+                  value={formData.preservationMethod}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>Nuclease-free H2O</option>
+                  <option>Tris Buffer</option>
+                  <option>Trizol</option>
+                  <option>EDTA Tube(Blood)</option>
+                  <option>Tempus Tube(Blood)</option>
+                  <option>其他</option>
+                </select>
+                {formData.preservationMethod === '其他' && (
+                  <input
+                    type="text"
+                    name="preservationMethodOther"
+                    value={formData.preservationMethodOther}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                    placeholder="請說明保存方式"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  樣品數量 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="sampleCount"
+                  value={formData.sampleCount}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  物種 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="species"
+                  value={formData.species}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>物種請選擇</option>
+                  <option>Human</option>
+                  <option>Mouse</option>
+                  <option>Rat</option>
+                  <option>其他</option>
+                </select>
+                {formData.species === '其他' && (
+                  <input
+                    type="text"
+                    name="speciesOther"
+                    value={formData.speciesOther}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                    placeholder="請說明物種"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  寄送方式 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="shippingMethod"
+                  value={formData.shippingMethod}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>冷凍(乾冰)</option>
+                  <option>冷藏</option>
+                  <option>常溫</option>
+                  <option>其他</option>
+                </select>
+                {formData.shippingMethod === '其他' && (
+                  <input
+                    type="text"
+                    name="shippingMethodOther"
+                    value={formData.shippingMethodOther}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                    placeholder="請說明寄送方式"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  樣本返還
+                </label>
+                <select
+                  name="sampleReturn"
+                  value={formData.sampleReturn}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>不需要</option>
+                  <option>代寄(運費自付)</option>
+                  <option>自取 (結案一個月內自取，逾期銷毀)</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  備註
+                </label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 委託人簽名確認 */}
+          <div className="border-2 border-gray-400 rounded-lg p-6 bg-white shadow-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 pb-3 border-b-2 border-gray-300">
+              委託人簽名確認 <span className="text-red-600">*</span>
+            </h3>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border-2 border-blue-200">
+              {!formData.signature ? (
+                <div className="text-center py-8">
+                  <div className="mb-4">
+                    <Edit3 size={48} className="mx-auto text-blue-600" />
+                  </div>
+                  <p className="text-gray-700 mb-2 font-medium">請簽名確認訂單內容無誤</p>
+                  <p className="text-sm text-gray-500 mb-6">
+                    支援手寫簽名 ✍️ 或上傳圖片 📤
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowSignaturePad(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                  >
+                    <Edit3 size={20} />
+                    開始簽名
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-green-600 font-semibold flex items-center gap-2 text-lg">
+                      <Check size={24} />
+                      已完成簽名
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowSignaturePad(true)}
+                        className="px-4 py-2 text-sm border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition"
+                      >
+                        重新簽名
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSignature}
+                        className="px-4 py-2 text-sm text-red-600 border-2 border-red-300 rounded-lg hover:bg-red-50 transition"
+                      >
+                        清除簽名
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border-2 border-gray-300 rounded-lg p-4 bg-white shadow-sm">
+                    <img 
+                      src={formData.signature} 
+                      alt="委託人簽名" 
+                      className="max-w-full h-auto mx-auto"
+                      style={{ maxHeight: '150px' }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    📅 簽名日期：{new Date().toLocaleDateString('zh-TW', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 提交按鈕 */}
+          <div className="flex gap-4 pt-6 border-t">
+            <button
+              onClick={handleSubmit}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium shadow-md hover:shadow-lg"
+            >
+              <Send size={20} />
+              提交訂單
+            </button>
+            <button
+              onClick={exportToExcel}
+              className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 font-medium shadow-md hover:shadow-lg"
+            >
+              <Download size={20} />
+              匯出 Excel
+            </button>
+          </div>
+
+          {/* 訊息提示 */}
+          {message && (
+            <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${
+              submitted || message.includes('成功') 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+            }`}>
+              <AlertCircle size={20} />
+              <span>{message}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* 簽名板彈窗 */}
+      {showSignaturePad && (
+        <SignaturePad
+          title="委託人簽名確認"
+          onSave={handleSignatureSave}
+          onCancel={handleSignatureCancel}
+        />
+      )}
+
+      {/* 貼上資料 Modal */}
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full">
+            <div className="border-b px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">從 Excel 貼上資料</h3>
+              <button 
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteData('');
+                }} 
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  📋 請在 Excel 中選擇資料（包含標題行），然後按 Ctrl+C 複製，再貼到下方文字框中
+                </p>
+                {pasteMode === 'sampleSheet' ? (
+                  <p className="text-xs text-gray-500">
+                    格式：序號 | Sample_Name | Tube Label | Conc (ng/ul) | Vol (uL) | NGS上機濃度 (pM) | 預期定序量 | 備註
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    格式：序號 | Sample_Name | Library Prep Kit | Index Adapter Kit | Set-Well Position | Index 1 (i7) | Index 2 (i5) | 備註 | Library
+                  </p>
+                )}
+              </div>
+              
+              <textarea
+                value={pasteData}
+                onChange={(e) => setPasteData(e.target.value)}
+                placeholder="請在此貼上從 Excel 複製的資料..."
+                rows={10}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              />
+            </div>
+            
+            <div className="border-t px-6 py-4 flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteData('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                取消
+              </button>
+              <button
+                onClick={handlePasteData}av
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+              >
+                <Check size={18} />
+                確認匯入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TGIAOrderForm;

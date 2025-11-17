@@ -1,0 +1,167 @@
+[
+  {
+    "code": "蔡啟仁",
+    "organization": "WENWEN",
+    "principalInvestigator": "WENWEN",
+    "contactPerson": "WENWEN",
+    "contactPhone": "電話寫這邊",
+    "email": "Email@123.com",
+    "address": "300093 新竹市大學路1001號 生科院A棟3樓",
+    "invoiceTitle": "國立陽明交通大學",
+    "taxId": "03732103"
+  },
+  {
+    "code": "C002",
+    "organization": "國立台灣大學",
+    "principalInvestigator": "李教授志強",
+    "contactPerson": "陳先生俊傑",
+    "contactPhone": "02-3366-3366 #1234",
+    "email": "jjchen@ntu.edu.tw",
+    "address": "10617 台北市羅斯福路四段1號 生科大樓5樓",
+    "invoiceTitle": "國立台灣大學",
+    "taxId": "03724301"
+  },
+  {
+    "code": "C003",
+    "organization": "國立成功大學",
+    "principalInvestigator": "林教授美玲",
+    "contactPerson": "黃小姐淑芬",
+    "contactPhone": "06-2757575 #63100",
+    "email": "sfhuang@ncku.edu.tw",
+    "address": "701401 台南市大學路1號 醫學院7樓",
+    "invoiceTitle": "國立成功大學",
+    "taxId": "69103903"
+  },
+  {
+    "code": "C004",
+    "organization": "中央研究院",
+    "principalInvestigator": "吳博士建國",
+    "contactPerson": "劉先生俊男",
+    "contactPhone": "02-2789-8888 #1122",
+    "email": "jnliu@gate.sinica.edu.tw",
+    "address": "11529 台北市南港區研究院路二段128號 分生所B棟",
+    "invoiceTitle": "中央研究院",
+    "taxId": "03731501"
+  },
+  {
+    "code": "C005",
+    "organization": "長庚醫療財團法人林口長庚紀念醫院",
+    "principalInvestigator": "張醫師志明",
+    "contactPerson": "陳小姐佳芳",
+    "contactPhone": "03-3281200 #8888",
+    "email": "jfchen@cgmh.org.tw",
+    "address": "33305 桃園市龜山區復興街5號 研究大樓12樓",
+    "invoiceTitle": "長庚醫療財團法人林口長庚紀念醫院",
+    "taxId": "13104801"
+  },
+  {
+    "code": "C006",
+    "organization": "國家衛生研究院",
+    "principalInvestigator": "楊博士建華",
+    "contactPerson": "許先生文傑",
+    "contactPhone": "037-246-166 #31234",
+    "email": "wjhsu@nhri.edu.tw",
+    "address": "35053 苗栗縣竹南鎮科研路35號 感染症與疫苗研究所",
+    "invoiceTitle": "國家衛生研究院",
+    "taxId": "26564329"
+  },
+  {
+    "code": "C007",
+    "organization": "國立清華大學",
+    "principalInvestigator": "周教授雅惠",
+    "contactPerson": "吳小姐靜怡",
+    "contactPhone": "03-5715131 #42876",
+    "email": "jywu@mx.nthu.edu.tw",
+    "address": "300044 新竹市光復路二段101號 生科館2樓",
+    "invoiceTitle": "國立清華大學",
+    "taxId": "52005901"
+  },
+  {
+    "code": "C008",
+    "organization": "中國醫藥大學",
+    "principalInvestigator": "蔡教授宗翰",
+    "contactPerson": "林小姐美珍",
+    "contactPhone": "04-2205-3366 #1818",
+    "email": "mjlin@mail.cmu.edu.tw",
+    "address": "40402 台中市北區學士路91號 醫學大樓8樓",
+    "invoiceTitle": "中國醫藥大學",
+    "taxId": "52013501"
+  },
+  {
+    "code": "C009",
+    "organization": "台北榮民總醫院",
+    "principalInvestigator": "賴醫師俊良",
+    "contactPerson": "蔡先生明達",
+    "contactPhone": "02-2871-2121 #2345",
+    "email": "mdtsai@vghtpe.gov.tw",
+    "address": "11217 台北市北投區石牌路二段201號 研究部5樓",
+    "invoiceTitle": "臺北榮民總醫院",
+    "taxId": "04201079"
+  },
+  {
+    "code": "C010",
+    "organization": "工業技術研究院",
+    "principalInvestigator": "陳博士俊宏",
+    "contactPerson": "王小姐淑慧",
+    "contactPhone": "03-5916006",
+    "email": "shwang@itri.org.tw",
+    "address": "31057 新竹縣竹東鎮中興路四段195號 生醫所21館",
+    "invoiceTitle": "財團法人工業技術研究院",
+    "taxId": "06408638"
+  },
+  {
+    "code": "C011",
+    "organization": "國立中興大學",
+    "principalInvestigator": "鄭教授淑貞",
+    "contactPerson": "謝先生志偉",
+    "contactPhone": "04-22840338 #610",
+    "email": "jwshieh@nchu.edu.tw",
+    "address": "40227 台中市南區興大路145號 農資院2樓",
+    "invoiceTitle": "國立中興大學",
+    "taxId": "52005801"
+  },
+  {
+    "code": "C012",
+    "organization": "台灣大學醫學院附設醫院",
+    "principalInvestigator": "黃醫師志遠",
+    "contactPerson": "李小姐雅婷",
+    "contactPhone": "02-2312-3456 #63357",
+    "email": "ytli@ntuh.gov.tw",
+    "address": "10048 台北市中正區中山南路7號 西址大樓5樓",
+    "invoiceTitle": "國立台灣大學醫學院附設醫院",
+    "taxId": "04201074"
+  },
+  {
+    "code": "C013",
+    "organization": "慈濟醫療財團法人花蓮慈濟醫院",
+    "principalInvestigator": "林醫師碧珠",
+    "contactPerson": "張先生志強",
+    "contactPhone": "03-8561825 #2136",
+    "email": "jcchang@tzuchi.com.tw",
+    "address": "97004 花蓮市中央路三段707號 研究部8樓",
+    "invoiceTitle": "慈濟醫療財團法人花蓮慈濟醫院",
+    "taxId": "51013601"
+  },
+  {
+    "code": "C014",
+    "organization": "國防醫學院",
+    "principalInvestigator": "劉教授建勳",
+    "contactPerson": "周小姐雅玲",
+    "contactPhone": "02-8792-3100 #18762",
+    "email": "ylchou@ndmctsgh.edu.tw",
+    "address": "11490 台北市內湖區民權東路六段161號 基礎醫學大樓3樓",
+    "invoiceTitle": "國防醫學院",
+    "taxId": "73301401"
+  },
+  {
+    "code": "C015",
+    "organization": "國立海洋大學",
+    "principalInvestigator": "吳教授宗憲",
+    "contactPerson": "鄭先生俊男",
+    "contactPhone": "02-2462-2192 #5518",
+    "email": "jncheng@mail.ntou.edu.tw",
+    "address": "20224 基隆市中正區北寧路2號 生命科學院A棟4樓",
+    "invoiceTitle": "國立臺灣海洋大學",
+    "taxId": "75851301"
+  }
+]

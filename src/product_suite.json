@@ -1,0 +1,14 @@
+[
+  {
+    "id": "AP-01",
+    "name": "台基安 WGS",
+    "categories": ["萃取/QC (EQ)", "建庫服務 (L)", "定序服務 (S)", "分析服務 (A)"],
+    "contents": [
+      { "category": "萃取/QC (EQ)", "service": "Q-ED01 DNA萃取+QC - 血液、Buffy coat DNA萃取", "quantity": 1 },
+      { "category": "建庫服務 (L)", "service": "Illumina, Illumina DNA PCR-Free Prep 建庫", "quantity": 1 },
+      { "category": "定序服務 (S)", "service": "S-G000 二代定序 - 定序量購買", "quantity": 90 },
+      { "category": "分析服務 (A)", "service": "A202 2nd - DRAGEN-Germline-XP", "quantity": 1 },
+      { "category": "分析服務 (A)", "service": "A302 3rd - Geneyx-Report", "quantity": 1 }
+    ]
+  }
+]

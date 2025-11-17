@@ -1,0 +1,66 @@
+[
+  {
+    "code": "TGIA012",
+    "name": "趙佩宇",
+    "department": "",
+    "email": "haley.chao@tgiainc.com",
+    "phone": "0987-748-055"
+  },
+  {
+    "code": "TGIA083",
+    "name": "施秉宏",
+    "department": "",
+    "email": "eunice.peng@tgiainc.com",
+    "phone": "0917-448-447"
+  },    
+  {
+    "code": "TGIA017",
+    "name": "彭璐珈",
+    "department": "",
+    "email": "ph.shih@tgiainc.com",
+    "phone": "0923-279-097"
+  },
+  {
+    "code": "TGIA051",
+    "name": "周信堅",
+    "department": "業務部",
+    "email": "allen.chou@tgiainc.com",
+    "phone": "0978-599-220"
+  },
+  {
+    "code": "TGIA025",
+    "name": "梁詩屏",
+    "department": "業務部",
+    "email": "jessie.liang@tgiainc.com",
+    "phone": "0975-118-355"
+  },
+  {
+    "code": "TGIA053",
+    "name": "賴欣瑋",
+    "department": "業務部",
+    "email": "wisely.lai@tgiainc.com",
+    "phone": "0963-007-274"
+  },
+  {
+    "code": "TGIA026",
+    "name": "黃懷慧",
+    "department": "業務部",
+    "email": "Emily.huang@tgiainc.com",
+    "phone": "0978-032-276"
+  },
+  {
+    "code": "TGIA061",
+    "name": "王維麟",
+    "department": "業務部",
+    "email": "will.wang@tgiainc.com",
+    "phone": "0932-898-531"
+  },
+  {
+    "code": "TGIA063",
+    "name": "李尚洋",
+    "department": "業務部",
+    "email": "young.lee@tgiainc.com",
+    "phone": "0928-310-435"
+  }  
+
+]

@@ -1,0 +1,814 @@
+import React, { useState, useRef } from 'react';
+import { AlertCircle, Download, Send, Plus, Edit3, Check, X, RotateCcw } from 'lucide-react';
+
+// ========== 簽名板組件 ==========
+const SignaturePad = ({ onSave, onCancel, title = "請簽名" }) => {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(true);
+  const [context, setContext] = useState(null);
+
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    setContext(ctx);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, []);
+
+  const getCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(true);
+    setIsEmpty(false);
+    const { x, y } = getCoordinates(e);
+    context.beginPath();
+    context.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const { x, y } = getCoordinates(e);
+    context.lineTo(x, y);
+    context.stroke();
+  };
+
+  const stopDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(false);
+    context.closePath();
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    context.fillStyle = '#FFFFFF';
+    context.fillRect(0, 0, rect.width, rect.height);
+    setIsEmpty(true);
+  };
+
+  const saveSignature = () => {
+    if (isEmpty) {
+      alert('請先簽名');
+      return;
+    }
+    const canvas = canvasRef.current;
+    const signatureData = canvas.toDataURL('image/png');
+    onSave(signatureData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+        <div className="border-b px-6 py-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition">
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="p-6">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg bg-white overflow-hidden">
+            <canvas
+              ref={canvasRef}
+              className="w-full touch-none cursor-crosshair"
+              style={{ height: '300px' }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2 text-center">
+            💡 提示：使用滑鼠、觸控筆或手指在上方區域簽名
+          </p>
+        </div>
+        
+        <div className="border-t px-6 py-4 flex gap-3 justify-end">
+          <button
+            onClick={clearSignature}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+          >
+            <RotateCcw size={18} />
+            重新簽名
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
+            取消
+          </button>
+          <button
+            onClick={saveSignature}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+          >
+            <Check size={18} />
+            確認簽名
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ========== 主表單組件 ==========
+const TGIAOrderForm = () => {
+  const [formData, setFormData] = useState({
+    customerPO: '',
+    organization: '',
+    principalInvestigator: '',
+    contactPerson: '',
+    contactPhone: '',
+    email: '',
+    address: '',
+    invoiceTitle: '',
+    taxId: '',
+    invoiceCopies: '二聯式',
+    dataDeliveryMethod: 'HDD由專人遞送',
+    nchcAccount: '',
+    deliveryAddress: '',
+    recipient: '',
+    recipientPhone: '',
+    recipientEmail: '',
+    serviceItems: [{
+      service: '服務品項請選擇',
+      quantity: '',
+      libraryType: '無',
+      seqSpec: '',
+      dataDelivery: '',
+      estimatedTime: ''
+    }],
+    sampleType: 'Library',
+    extractionService: '萃取服務請選擇',
+    preservationMethod: '',
+    sampleCount: '',
+    species: '物種請選擇',
+    returnSample: false,
+    shippingMethod: '',
+    notes: '',
+    signature: null
+  });
+
+  const [submitted, setSubmitted] = useState(false);
+  const [message, setMessage] = useState('');
+  const [orderId, setOrderId] = useState('');
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+
+  const serviceOptions = [
+    '服務品項請選擇',
+    'S-000-012-01 NovaSeq X Plus 25B Run service, Lane',
+    'S-000-011-01 NovaSeq 6000 S4 Run service, Lane',
+    'S-000-010-01 NovaSeq X Plus 10B Run service, Lane'
+  ];
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleServiceItemChange = (index, field, value) => {
+    const newItems = [...formData.serviceItems];
+    newItems[index][field] = value;
+    setFormData(prev => ({ ...prev, serviceItems: newItems }));
+  };
+
+  const addServiceItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      serviceItems: [...prev.serviceItems, {
+        service: '服務品項請選擇',
+        quantity: '',
+        libraryType: '無',
+        seqSpec: '',
+        dataDelivery: '',
+        estimatedTime: ''
+      }]
+    }));
+  };
+
+  const handleSignatureSave = (signatureData) => {
+    setFormData(prev => ({ ...prev, signature: signatureData }));
+    setShowSignaturePad(false);
+    setMessage('簽名已保存');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const handleSignatureCancel = () => {
+    setShowSignaturePad(false);
+  };
+
+  const clearSignature = () => {
+    setFormData(prev => ({ ...prev, signature: null }));
+    setMessage('簽名已清除');
+    setTimeout(() => setMessage(''), 2000);
+  };
+
+  const handleSubmit = async () => {
+    // 驗證必填欄位
+    if (!formData.organization || !formData.contactPerson || !formData.email) {
+      setMessage('請填寫所有必填欄位（標 * 者）');
+      return;
+    }
+    
+    if (!formData.signature) {
+      setMessage('請先簽名確認訂單內容');
+      return;
+    }
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setSubmitted(true);
+        setOrderId(result.orderId);
+        setMessage(`訂單已成功提交！訂單編號：${result.orderId}`);
+        setTimeout(() => {
+          setSubmitted(false);
+        }, 5000);
+      } else {
+        setMessage('提交失敗：' + result.error);
+      }
+    } catch (error) {
+      setMessage('提交失敗：' + error.message);
+    }
+  };
+
+  const exportToExcel = async () => {
+    if (!orderId) {
+      setMessage('請先提交訂單才能匯出 Excel');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:3001/api/orders/${orderId}/export`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TGIA_Order_${orderId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setMessage('Excel 檔案下載成功');
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage('匯出失敗：' + error.message);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        <div className="text-center mb-8 border-b pb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            台基盟生技股份有限公司
+          </h1>
+          <h2 className="text-xl text-gray-600 mb-4">
+            委託服務同意書/訂購確認單
+          </h2>
+          <div className="flex justify-between text-sm text-gray-500">
+            <span>正常單</span>
+            <span className="text-red-600">標 * 為必填之欄位</span>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          {/* 基本資訊 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                客戶採購單號
+              </label>
+              <input
+                type="text"
+                name="customerPO"
+                value={formData.customerPO}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                填寫日期
+              </label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                defaultValue={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          </div>
+
+          {/* 1. 委託人資訊 */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              1. 委託人資訊
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  單位 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="organization"
+                  value={formData.organization}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="例：國立陽明交通大學"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  負責人/主持人 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="principalInvestigator"
+                  value={formData.principalInvestigator}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  聯絡人 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="contactPerson"
+                  value={formData.contactPerson}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  聯絡電話 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="contactPhone"
+                  value={formData.contactPhone}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="886-2-2826-7319"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="example@nycu.edu.tw"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  地址
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 發票資訊 */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              發票資訊
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  抬頭
+                </label>
+                <input
+                  type="text"
+                  name="invoiceTitle"
+                  value={formData.invoiceTitle}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  統編
+                </label>
+                <input
+                  type="text"
+                  name="taxId"
+                  value={formData.taxId}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  maxLength={8}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  發票聯數
+                </label>
+                <select
+                  name="invoiceCopies"
+                  value={formData.invoiceCopies}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>二聯式</option>
+                  <option>三聯式</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 數據交付資訊 */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              數據交付資訊
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  數據提供方式 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="dataDeliveryMethod"
+                  value={formData.dataDeliveryMethod}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>HDD由專人遞送</option>
+                  <option>國網中心下載</option>
+                  <option>雲端下載</option>
+                </select>
+              </div>
+              {formData.dataDeliveryMethod === 'HDD由專人遞送' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      數據硬碟交貨地址
+                    </label>
+                    <input
+                      type="text"
+                      name="deliveryAddress"
+                      value={formData.deliveryAddress}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      placeholder="請填寫郵遞區號"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        收件人
+                      </label>
+                      <input
+                        type="text"
+                        name="recipient"
+                        value={formData.recipient}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        電話
+                      </label>
+                      <input
+                        type="tel"
+                        name="recipientPhone"
+                        value={formData.recipientPhone}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        name="recipientEmail"
+                        value={formData.recipientEmail}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 2. 委託內容 */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              2. 委託內容
+            </h3>
+            {formData.serviceItems.map((item, index) => (
+              <div key={index} className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      服務品項 <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      value={item.service}
+                      onChange={(e) => handleServiceItemChange(index, 'service', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    >
+                      {serviceOptions.map((opt, i) => (
+                        <option key={i}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      數量 <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleServiceItemChange(index, 'quantity', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      建庫種類
+                    </label>
+                    <input
+                      type="text"
+                      value={item.libraryType}
+                      onChange={(e) => handleServiceItemChange(index, 'libraryType', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      定序規格
+                    </label>
+                    <input
+                      type="text"
+                      value={item.seqSpec}
+                      onChange={(e) => handleServiceItemChange(index, 'seqSpec', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      placeholder="例：PE150; 1T+/-10%; Q30>= 80±5%"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addServiceItem}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              <Plus size={16} />
+              新增服務品項
+            </button>
+          </div>
+
+          {/* 送測樣品資訊 */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              送測樣品資訊
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  樣品類型 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="sampleType"
+                  value={formData.sampleType}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>Library</option>
+                  <option>DNA</option>
+                  <option>RNA</option>
+                  <option>Cell</option>
+                  <option>Blood</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  保存方式 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="preservationMethod"
+                  value={formData.preservationMethod}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="例：-20°C, -80°C"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  樣品數量 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="sampleCount"
+                  value={formData.sampleCount}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  物種 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="species"
+                  value={formData.species}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>物種請選擇</option>
+                  <option>Human</option>
+                  <option>Mouse</option>
+                  <option>Rat</option>
+                  <option>其他</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  備註
+                </label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 委託人簽名確認 */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              委託人簽名確認 <span className="text-red-600">*</span>
+            </h3>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border-2 border-blue-200">
+              {!formData.signature ? (
+                <div className="text-center py-8">
+                  <div className="mb-4">
+                    <Edit3 size={48} className="mx-auto text-blue-600" />
+                  </div>
+                  <p className="text-gray-700 mb-2 font-medium">請簽名確認訂單內容無誤</p>
+                  <p className="text-sm text-gray-500 mb-6">
+                    支援滑鼠 🖱️、觸控筆 ✏️ 或手指 👆 簽名
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowSignaturePad(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                  >
+                    <Edit3 size={20} />
+                    開始簽名
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-green-600 font-semibold flex items-center gap-2 text-lg">
+                      <Check size={24} />
+                      已完成簽名
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowSignaturePad(true)}
+                        className="px-4 py-2 text-sm border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition"
+                      >
+                        重新簽名
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSignature}
+                        className="px-4 py-2 text-sm text-red-600 border-2 border-red-300 rounded-lg hover:bg-red-50 transition"
+                      >
+                        清除簽名
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border-2 border-gray-300 rounded-lg p-4 bg-white shadow-sm">
+                    <img 
+                      src={formData.signature} 
+                      alt="委託人簽名" 
+                      className="max-w-full h-auto mx-auto"
+                      style={{ maxHeight: '150px' }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    📅 簽名日期：{new Date().toLocaleDateString('zh-TW', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 提交按鈕 */}
+          <div className="flex gap-4 pt-6 border-t">
+            <button
+              onClick={handleSubmit}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium shadow-md hover:shadow-lg"
+            >
+              <Send size={20} />
+              提交訂單
+            </button>
+            <button
+              onClick={exportToExcel}
+              className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 font-medium shadow-md hover:shadow-lg"
+            >
+              <Download size={20} />
+              匯出 Excel
+            </button>
+          </div>
+
+          {/* 訊息提示 */}
+          {message && (
+            <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${
+              submitted || message.includes('成功') 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+            }`}>
+              <AlertCircle size={20} />
+              <span>{message}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* 簽名板彈窗 */}
+      {showSignaturePad && (
+        <SignaturePad
+          title="委託人簽名確認"
+          onSave={handleSignatureSave}
+          onCancel={handleSignatureCancel}
+        />
+      )}
+    </div>
+  );
+};
+
+export default TGIAOrderForm;

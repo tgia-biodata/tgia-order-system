@@ -1,0 +1,169 @@
+[
+  {
+    "id": "WGS-Basic-2nd-Analysis",
+    "name": "WGS 定序-基礎二級分析",
+    "description": "血液樣本 → DNA萃取+QC → 建庫 → 定序（預設90G）→ 二級分析(Dragen)",
+    "icon": "🧬",
+    "extractionType": "DNA",
+    "categories": ["萃取/QC (EQ)", "建庫服務 (L)", "定序服務 (S)", "分析服務 (A)"],
+    "serviceFilters": {
+      "萃取/QC (EQ)": {
+        "allowedServices": [
+          "Q-ED01 DNA萃取+QC - 血液、Buffy coat DNA萃取",
+          "Q-ED02 DNA萃取+QC - 細胞 DNA萃取" 
+        ],
+        "description": "只允許 DNA 萃取服務"
+      },
+      "建庫服務 (L)": {
+        "allowedServices": [
+          "L-WG01 WGS - Illumina, Illumina DNA PCR-Free Prep 建庫"
+        ],
+        "description": "只允許 DNA 建庫服務"
+      },
+      "分析服務 (A)": {
+        "allowedServices": [
+          "A202 2nd - DRAGEN-Germline"
+        ],
+        "description": "只允許 DNA 建庫服務"
+      }      
+    },
+    "defaultServices": [
+      {
+        "category": "萃取/QC (EQ)",
+        "service": "Q-ED01 DNA萃取+QC - 血液、Buffy coat DNA萃取",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "建庫服務 (L)",
+        "service": "L-WG01 WGS - Illumina, Illumina DNA PCR-Free Prep 建庫",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "定序服務 (S)",
+        "service": "S-G000 二代定序 - 定序量購買",
+        "defaultQuantity": "90",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "分析服務 (A)",
+        "service": "A202 2nd - DRAGEN-Germline",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": true
+      }      
+    ],
+    "recommendedSampleType": "Blood"
+  },
+  {
+    "id": "RNA-Seq-Analysis",
+    "name": "Bulk RNA-Seq 定序-基礎二級分析(含萃取)",
+    "description": "血液樣本 → DNA萃取+QC → 建庫 → 定序（預設90G）→ 二級分析(Dragen)",
+    "icon": "🧬",
+    "extractionType": "RNA",
+    "categories": ["萃取/QC (EQ)", "建庫服務 (L)", "定序服務 (S)", "分析服務 (A)"],
+    "serviceFilters": {
+      "萃取/QC (EQ)": {
+        "allowedServices": [
+          "Q-ER01A RNA萃取+QC - 血液 RNA萃取 (Tempus 採血管)",
+          "Q-ER02 RNA萃取+QC - 細胞 RNA萃取",
+          "Q-ER03 RNA萃取+QC - 組織 RNA萃取" 
+        ],
+        "description": "只允許 RNA 萃取服務"
+      },
+      "建庫服務 (L)": {
+        "allowedServices": [
+          "L-RN01 RNAseq - Illumina, Illumina Stranded mRNA 建庫",
+          "L-RN02 RNAseq - Illumina, Illumina Stranded Total RNA Prep, Ligation with Ribo-Zero Plus 建庫",
+          "L-RN03 RNAseq - Illumina, Illumina RNA Prep with Enrichment 建庫",
+          "L-RN04 RNAseq - Roche, KAPA mRNA HyperPrep 建庫"
+
+        ],
+        "description": "只允許 RNA 建庫服務"
+      },
+      "分析服務 (A)": {
+        "allowedServices": [
+          "A204 2nd - RNAseq-Basic",
+          "A205 2nd - RNAseq-Advanced"
+        ],
+        "description": "RNA 分析"
+      }      
+    },
+    "defaultServices": [
+      {
+        "category": "萃取/QC (EQ)",
+        "service": "Q-ER02 RNA萃取+QC - 細胞 RNA萃取",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "建庫服務 (L)",
+        "service": "L-RN01 RNAseq - Illumina, Illumina Stranded mRNA 建庫",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "定序服務 (S)",
+        "service": "S-G000 二代定序 - 定序量購買",
+        "defaultQuantity": "6",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "分析服務 (A)",
+        "service": "A205 2nd - RNAseq-Advanced",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": true
+      }  
+    ],
+    "recommendedSampleType": "Blood"
+  },
+  {
+    "id": "scNRA",
+    "name": "定序服務 + 單細胞/空間體學分析",
+    "description": "血液樣本 → DNA萃取+QC → 建庫 → 定序（預設90G）→ 二級分析(Dragen)",
+    "icon": "🧬",
+    "extractionType": "NA",
+    "categories": [ "定序服務 (S)", "分析服務 (A)"],
+    "serviceFilters": {
+      "萃取/QC (EQ)": {
+        "allowedServices": [
+          "Q-ER01A RNA萃取+QC - 血液 RNA萃取 (Tempus 採血管)",
+          "Q-ER02 RNA萃取+QC - 細胞 RNA萃取",
+          "Q-ER03 RNA萃取+QC - 組織 RNA萃取" 
+        ],
+        "description": "只允許 RNA 萃取服務"
+      },
+      "建庫服務 (L)": {
+        "allowedServices": [
+          "L-RN01 RNAseq - Illumina, Illumina Stranded mRNA 建庫",
+          "L-RN02 RNAseq - Illumina, Illumina Stranded Total RNA Prep, Ligation with Ribo-Zero Plus 建庫",
+          "L-RN03 RNAseq - Illumina, Illumina RNA Prep with Enrichment 建庫",
+          "L-RN04 RNAseq - Roche, KAPA mRNA HyperPrep 建庫"
+
+        ],
+        "description": "只允許 RNA 建庫服務"
+      },
+      "分析服務 (A)": {
+        "allowedServices": [
+          "A204 2nd - RNAseq-Basic",
+          "A205 2nd - RNAseq-Advanced",
+        "description",":", "RNA 分析"]
+      }      
+    },
+    "defaultServices": [
+      {
+        "category": "定序服務 (S)",
+        "service": "S-G000 二代定序 - 定序量購買",
+        "defaultQuantity": "6",
+        "excludeFromMultiplier": false
+      },
+      {
+        "category": "分析服務 (A)",
+        "service": "A205 2nd - RNAseq-Advanced",
+        "defaultQuantity": "1",
+        "excludeFromMultiplier": true
+      }  
+    ],
+    "recommendedSampleType": "Library"
+  }    
+]

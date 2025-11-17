@@ -1,0 +1,97 @@
+###############################
+tgia-backend/server.js 修改
+
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
+const ExcelJS = require('exceljs');
+
+const app = express();
+const PORT = process.env.PORT || 3001;  // ✅ 使用環境變數當作port
+
+// ✅ CORS 配置（允許 Render 前端）
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://tgia-frontend.onrender.com'  // 前端 URL
+  ],
+  credentials: true
+}));
+
+app.use(bodyParser.json({ limit: '50mb' }));
+
+// ✅ 使用臨時目錄
+const ordersDir = path.join(__dirname, 'orders');  // 使用當前目錄
+const templatesDir = path.join(__dirname, 'templates');
+
+// 確保目錄存在
+if (!fs.existsSync(ordersDir)) {
+  fs.mkdirSync(ordersDir, { recursive: true });
+}
+
+// 健康檢查端點（防止休眠）
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ... 其他保持不變 ...
+
+app.listen(PORT, '0.0.0.0', () => {  // ✅ 監聽所有網路介面
+  console.log(`🚀 後端服務器運行於 port ${PORT}`);
+  console.log(`📁 訂單儲存位置: ${ordersDir}`);
+  console.log(`📋 Excel模板位置: ${templatesDir}`);
+});
+
+
+--------部屬部分-------------------
+後端
+##############
+📝 基本資訊	
+	
+欄位	填寫內容
+Name	tgia-backend
+Region	Singapore
+Branch	main
+Root Directory	tgia-backend ⚠️ 重要
+	
+	
+📝 Runtime 設定	
+	
+欄位	選擇/填寫
+Runtime	Node
+Build Command	npm install
+Start Command	npm start
+
+#########
+前端
+#########
+欄位	填寫內容
+Name	tgia-order
+Branch	main
+Root Directory	留空 ⚠️ 不要填任何東西！
+	
+⚠️ 超級重要： Root Directory 必須是空的或 ./，千萬不要填 tgia-backend！	
+	
+	
+	
+📝 Build 設定	
+	
+欄位	填寫內容
+Build Command	npm install && npm run build
+Publish Directory	build
+	
+	
+🔐 環境變數（重要！）	
+	
+往下滾動找到 「Environment Variables」：	
+	
+點擊 「Add Environment Variable」：	
+	
+Key	Value
+REACT_APP_API_URL	https://tgia-backend-xxxx.onrender.com
+	
+⚠️ 替換成你的實際後端 URL！ 不要有結尾的 /	
+
+
