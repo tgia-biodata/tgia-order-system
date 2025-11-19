@@ -331,11 +331,12 @@ const TGIAOrderForm = () => {
         if (isRNAseq) {
           setFormData(prev => {
             // 只有當值不是 '其他' 時才更新，避免無窮迴圈
-            if (prev.preservationMethod !== '其他' || prev.shippingMethod !== '其他') {
+            if (prev.preservationMethod !== '其他' || prev.shippingMethod !== '其他' || prev.sampleType !== '其他') {
               return {
                 ...prev,
                 preservationMethod: '其他',
-                shippingMethod: '其他'
+                shippingMethod: '其他',
+                sampleType: '其他'
               };
             }
             return prev;
@@ -834,7 +835,148 @@ const TGIAOrderForm = () => {
   };
 
   // 驗證當前步驟必填欄位
+  // 🆕 驗證分析組別一致性 (Shared Function)
+  const validateAnalysisGroups = (currentFormData) => {
+    const showDEParams = currentFormData.selectedServiceCategories.length === 1 &&
+      currentFormData.selectedServiceCategories[0] === '分析服務 (A)' &&
+      currentFormData.serviceItems.find(item => item.category === '分析服務 (A)')?.services.some(s => s.service && ['A205', 'A207'].some(code => s.service.includes(code)));
+
+    if (!showDEParams) return { isValid: true, errors: {}, warnings: {}, rowErrors: {} };
+
+    const sampleSheet = currentFormData.sampleType === 'Library'
+      ? currentFormData.libraryInfo.sampleSheet
+      : currentFormData.sampleInfo.sampleSheet;
+
+    const comparisonGroups = currentFormData.analysisRequirements.comparisonGroups;
+    const groups = ['analysisGroup1', 'analysisGroup2', 'analysisGroup3'];
+    const groupLabels = {
+      analysisGroup1: '分析組別一',
+      analysisGroup2: '分析組別二',
+      analysisGroup3: '分析組別三'
+    };
+
+    const result = {
+      isValid: true,
+      errors: {},      // Blocking group-level errors
+      warnings: {},    // Non-blocking group-level warnings
+      rowErrors: {}    // Blocking row-level errors (keyed by rowIdx)
+    };
+
+    // 用於檢測重複組合
+    const allPairs = {
+      group1: [],
+      group2: [],
+      group3: []
+    };
+
+    // 1. 檢查每一列的 Self-comparison 和 Incomplete Pair
+    comparisonGroups.forEach((row, rowIdx) => {
+      groups.forEach((groupKey, gIdx) => {
+        const groupNum = gIdx + 1;
+        const controlKey = `group${groupNum}Control`;
+        const treatmentKey = `group${groupNum}Treatment`;
+        const cVal = row[controlKey];
+        const tVal = row[treatmentKey];
+
+        // 收集 Pair 用於後續檢查重複
+        if (cVal && tVal) {
+          allPairs[`group${groupNum}`].push({ control: cVal, treatment: tVal, rowIdx });
+        }
+
+        // Priority 1: Self-comparison (Blocking)
+        if (cVal && tVal && cVal === tVal) {
+          if (!result.rowErrors[rowIdx]) result.rowErrors[rowIdx] = {};
+          result.rowErrors[rowIdx][`group${groupNum}`] = 'Control 不可等於 Treatment';
+          result.isValid = false;
+          return; // 優先級最高，該格不繼續檢查
+        }
+
+        // Priority 3: Incomplete Pair (Blocking)
+        // 注意：Priority 2 (Duplicate) 是跨列檢查，稍後執行
+        if ((cVal && !tVal) || (!cVal && tVal)) {
+          if (!result.rowErrors[rowIdx]) result.rowErrors[rowIdx] = {};
+          result.rowErrors[rowIdx][`group${groupNum}`] = '需完整選擇 Control 與 Treatment';
+          result.isValid = false;
+        }
+      });
+    });
+
+    // 2. 檢查 Duplicate Pairs (Priority 2)
+    ['group1', 'group2', 'group3'].forEach(gKey => {
+      const pairs = allPairs[gKey];
+      for (let i = 0; i < pairs.length; i++) {
+        for (let j = i + 1; j < pairs.length; j++) {
+          const pair1 = pairs[i];
+          const pair2 = pairs[j];
+
+          // 只比較同向組合是否重複 (A vs B) == (A vs B)
+          if (pair1.control === pair2.control && pair1.treatment === pair2.treatment) {
+            const rIdx = pair2.rowIdx;
+            // 如果該格還沒有更高優先級的錯誤 (Self-comparison)，則標記重複
+            if (!result.rowErrors[rIdx]?.[gKey]) {
+              if (!result.rowErrors[rIdx]) result.rowErrors[rIdx] = {};
+              result.rowErrors[rIdx][gKey] = '重複的比較組合';
+              result.isValid = false;
+            }
+          }
+        }
+      }
+    });
+
+    // 3. 檢查 Group-level Usage (Priority 4 & 5)
+    groups.forEach((groupKey, index) => {
+      const groupNum = index + 1;
+      const controlKey = `group${groupNum}Control`;
+      const treatmentKey = `group${groupNum}Treatment`;
+
+      // 如果該組別已經有 Row-level Error (Priority 1, 2, 3)，則不再檢查 Usage
+      // 檢查是否有任何 rowError 涉及此 group
+      const hasRowError = Object.values(result.rowErrors).some(rowErr => rowErr[`group${groupNum}`]);
+      if (hasRowError) return;
+
+      // 收集樣本表中該組別的所有值
+      const sampleValues = new Set(
+        sampleSheet
+          .map(row => row[groupKey])
+          .filter(v => v && v.trim() !== '')
+      );
+
+      if (sampleValues.size === 0) return;
+
+      // 收集比較組中該組別的使用情況
+      const usedInComparison = new Set();
+      comparisonGroups.forEach(row => {
+        const cVal = row[controlKey];
+        const tVal = row[treatmentKey];
+        if (cVal) usedInComparison.add(cVal);
+        if (tVal) usedInComparison.add(tVal);
+      });
+
+      // Priority 4: No Usage (Blocking)
+      // 規則：樣本表有值，但比較組完全沒用到任何一個
+      const hasIntersection = [...sampleValues].some(v => usedInComparison.has(v));
+      if (!hasIntersection) {
+        result.errors[groupKey] = `樣本表的「${groupLabels[groupKey]}」所出現的值，至少要有一個出現在差異表達分析比較組中。`;
+        result.isValid = false;
+        return;
+      }
+
+      // Priority 5: Partial Usage (Warning - Non-blocking)
+      // 只有在沒有任何 Blocking Error (isValid === true) 時才顯示 Warning
+      if (result.isValid) {
+        const missingValues = [...sampleValues].filter(v => !usedInComparison.has(v));
+        if (missingValues.length > 0) {
+          result.warnings[groupKey] = `⚠️ 樣本表的「${groupLabels[groupKey]}」中的樣本 ${missingValues.join(', ')} 未被選擇，該樣本將不會進行分析。`;
+        }
+      }
+    });
+
+    return result;
+  };
+
   const validateStep = (step) => {
+    setMessage('');
+
     // 清除之前的錯誤
     setFieldErrors({
       sampleSheet: {},
@@ -1183,137 +1325,46 @@ const TGIAOrderForm = () => {
           }
         }
 
-        // 🆕 比較組驗證 (when showDEParams is true, comparison groups are shown)
+        // 🆕 比較組驗證 (使用 Shared Function)
         if (isOnlyAnalysis && isRNAseqAnalysis && showDEParams) {
-          console.log('=== Comparison Groups Validation ===');
-          const comparisonErrors = {};
-          const comparisonGroups = formData.analysisRequirements.comparisonGroups;
+          const validationResult = validateAnalysisGroups(formData);
 
-          // 獲取樣本表中使用的分析組別
-          const sampleSheet = formData.sampleInfo.sampleSheet;
-          const usedInSample = {
-            group1: new Set(sampleSheet.map(r => r.analysisGroup1).filter(v => v && v.trim())),
-            group2: new Set(sampleSheet.map(r => r.analysisGroup2).filter(v => v && v.trim())),
-            group3: new Set(sampleSheet.map(r => r.analysisGroup3).filter(v => v && v.trim()))
-          };
+          if (!validationResult.isValid) {
+            // 將 rowErrors 轉換為 fieldErrors 格式以便顯示
+            const comparisonErrors = validationResult.rowErrors;
 
-          // 收集比較組中使用的值
-          const usedInComparison = {
-            group1: new Set(),
-            group2: new Set(),
-            group3: new Set()
-          };
+            // 將 groupErrors 轉換為 fieldErrors 格式
+            const groupErrors = {};
+            Object.keys(validationResult.errors).forEach(key => {
+              groupErrors[key] = validationResult.errors[key];
+            });
 
-          // 用於檢測重複組合
-          const allPairs = {
-            group1: [],
-            group2: [],
-            group3: []
-          };
-
-          comparisonGroups.forEach((row, rowIdx) => {
-            if (!comparisonErrors[rowIdx]) comparisonErrors[rowIdx] = {};
-
-            // 檢查分析組別一
-            if (row.group1Control || row.group1Treatment) {
-              if (row.group1Control && row.group1Treatment) {
-                if (row.group1Control === row.group1Treatment) {
-                  comparisonErrors[rowIdx].group1 = 'Control 不可等於 Treatment';
-                } else {
-                  usedInComparison.group1.add(row.group1Control);
-                  usedInComparison.group1.add(row.group1Treatment);
-                  allPairs.group1.push({ control: row.group1Control, treatment: row.group1Treatment, rowIdx });
-                }
+            const newErrors = {
+              ...errors,
+              analysisRequirements: {
+                ...errors.analysisRequirements,
+                ...groupErrors,
+                comparisonErrors: Object.keys(comparisonErrors).length > 0 ? comparisonErrors : undefined
               }
+            };
+
+            setFieldErrors(newErrors);
+
+            // 決定顯示什麼訊息
+            // 如果有 Group Level Error (Priority 4)，顯示該訊息
+            const firstGroupError = Object.values(validationResult.errors)[0];
+            if (firstGroupError) {
+              setMessage(`❌ ${firstGroupError}`);
+            } else {
+              setMessage('❌ 差異表達分析比較組設定有問題，請檢查紅色標示欄位');
             }
-
-            // 檢查分析組別二
-            if (row.group2Control || row.group2Treatment) {
-              if (row.group2Control && row.group2Treatment) {
-                if (row.group2Control === row.group2Treatment) {
-                  comparisonErrors[rowIdx].group2 = 'Control 不可等於 Treatment';
-                } else {
-                  usedInComparison.group2.add(row.group2Control);
-                  usedInComparison.group2.add(row.group2Treatment);
-                  allPairs.group2.push({ control: row.group2Control, treatment: row.group2Treatment, rowIdx });
-                }
-              }
-            }
-
-            // 檢查分析組別三
-            if (row.group3Control || row.group3Treatment) {
-              if (row.group3Control && row.group3Treatment) {
-                if (row.group3Control === row.group3Treatment) {
-                  comparisonErrors[rowIdx].group3 = 'Control 不可等於 Treatment';
-                } else {
-                  usedInComparison.group3.add(row.group3Control);
-                  usedInComparison.group3.add(row.group3Treatment);
-                  allPairs.group3.push({ control: row.group3Control, treatment: row.group3Treatment, rowIdx });
-                }
-              }
-            }
-          });
-
-          // 檢測重複組合（順序對調不算重複）
-          ['group1', 'group2', 'group3'].forEach(groupKey => {
-            const pairs = allPairs[groupKey];
-            for (let i = 0; i < pairs.length; i++) {
-              for (let j = i + 1; j < pairs.length; j++) {
-                const pair1 = pairs[i];
-                const pair2 = pairs[j];
-                // 檢查是否為相同組合（順序對調也算相同）
-                const isDuplicate =
-                  (pair1.control === pair2.control && pair1.treatment === pair2.treatment) ||
-                  (pair1.control === pair2.treatment && pair1.treatment === pair2.control);
-
-                if (isDuplicate) {
-                  if (!comparisonErrors[pair2.rowIdx]) comparisonErrors[pair2.rowIdx] = {};
-                  comparisonErrors[pair2.rowIdx][groupKey] = '重複的比較組合';
-                }
-              }
-            }
-          });
-
-          // 檢查樣本表中的值是否在比較組中被使用
-          if (usedInSample.group1.size > 0) {
-            const missingValues = [...usedInSample.group1].filter(v => !usedInComparison.group1.has(v));
-            if (missingValues.length > 0) {
-              console.log('Missing group1 values:', missingValues);
-              if (!errors.analysisRequirements) errors.analysisRequirements = {};
-              errors.analysisRequirements.comparisonGroup1Missing = `分析組別一 "${missingValues.join(', ')}" 未在比較組中使用`;
-            }
-          }
-
-          if (usedInSample.group2.size > 0) {
-            const missingValues = [...usedInSample.group2].filter(v => !usedInComparison.group2.has(v));
-            if (missingValues.length > 0) {
-              console.log('Missing group2 values:', missingValues);
-              if (!errors.analysisRequirements) errors.analysisRequirements = {};
-              errors.analysisRequirements.comparisonGroup2Missing = `分析組別二 "${missingValues.join(', ')}" 未在比較組中使用`;
-            }
-          }
-
-          if (usedInSample.group3.size > 0) {
-            const missingValues = [...usedInSample.group3].filter(v => !usedInComparison.group3.has(v));
-            if (missingValues.length > 0) {
-              console.log('Missing group3 values:', missingValues);
-              if (!errors.analysisRequirements) errors.analysisRequirements = {};
-              errors.analysisRequirements.comparisonGroup3Missing = `分析組別三 "${missingValues.join(', ')}" 未在比較組中使用`;
-            }
-          }
-
-          // 將比較組錯誤添加到 errors
-          if (Object.keys(comparisonErrors).some(key => Object.keys(comparisonErrors[key]).length > 0)) {
-            if (!errors.analysisRequirements) errors.analysisRequirements = {};
-            errors.analysisRequirements.comparisonErrors = comparisonErrors;
-            console.log('Comparison errors:', comparisonErrors);
+            return false;
           }
         }
 
         break;
     }
 
-    setMessage('');
     return true;
   };
 
@@ -4940,12 +4991,24 @@ const TGIAOrderForm = () => {
             const selectedService = analysisItem?.services[0]?.service || '';
 
             // 判斷顯示區塊 - 使用 startsWith 精確匹配服務代碼
+            // A204: 樣本表
+            // A205: 樣本表、差異表達基因分析參數、差異表達分析比較組
+            // A206: 樣本表、客製化需求
+            // A207: 樣本表、差異表達基因分析參數、差異表達分析比較組、客製化需求
+
             const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
               selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
+
             const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
             const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
 
             if (!showSampleTable) return null;
+
+            // 🆕 驗證分析組別一致性 (Real-time) - 使用 Shared Function
+            const { errors: analysisGroupErrors, warnings: analysisGroupWarnings, rowErrors: analysisGroupRowErrors } = showDEParams
+              ? validateAnalysisGroups(formData)
+              : { errors: {}, warnings: {}, rowErrors: {} };
 
             return (
               <div className="border-2 border-orange-300 rounded-lg p-6 bg-orange-50">
@@ -4959,7 +5022,7 @@ const TGIAOrderForm = () => {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border p-2 text-left min-w-[150px]">Sample Name <span className="text-red-600">*</span></th>
-                          <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一 <span className="text-red-600">*</span></th>
+                          <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一</th>
                           <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別二</th>
                           <th className="border p-2 text-left min-w-[120px] bg-yellow-50">分析組別三</th>
                           <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
@@ -5051,8 +5114,20 @@ const TGIAOrderForm = () => {
                                 <td className="border p-2">
                                   <input
                                     type="text"
+                                    value={row.note || ''}
+                                    onChange={(e) => {
+                                      const newSheet = [...rows];
+                                      newSheet[idx] = { ...newSheet[idx], note: e.target.value };
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                          sampleSheet: newSheet
+                                        }
+                                      }));
+                                    }}
                                     className="w-full px-2 py-1 border rounded"
-                                    placeholder="請填寫分析需求"
+                                    placeholder="備註"
                                   />
                                 </td>
                               </tr>
@@ -5168,14 +5243,12 @@ const TGIAOrderForm = () => {
                   showDEParams && (() => {
                     // 從樣本表中提取分析組別的唯一值
                     const getUniqueValues = (columnName) => {
-                      const sampleSheet = isOnlyAnalysis ? formData.sampleInfo.sampleSheet : [];
+                      const sampleSheet = formData.sampleType === 'Library'
+                        ? formData.libraryInfo.sampleSheet
+                        : formData.sampleInfo.sampleSheet;
+
                       const values = sampleSheet
-                        .map(row => {
-                          if (columnName === 'analysisGroup1') return row.analysisGroup1;
-                          if (columnName === 'analysisGroup2') return row.analysisGroup2;
-                          if (columnName === 'analysisGroup3') return row.analysisGroup3;
-                          return '';
-                        })
+                        .map(row => row[columnName])
                         .filter(v => v && v.trim() !== '');
                       return [...new Set(values)]; // 去重
                     };
@@ -5185,23 +5258,73 @@ const TGIAOrderForm = () => {
                     const group3Options = getUniqueValues('analysisGroup3');
 
                     return (
-                      <div className="mb-6 p-4 bg-white rounded border border-orange-200">
+                      <div className={`mb-6 p-4 bg-white rounded border ${Object.keys(analysisGroupErrors).length > 0 ? 'border-red-500' : 'border-orange-200'}`}>
                         <h4 className="font-semibold text-gray-700 mb-3">差異表達分析比較組</h4>
+
+                        {/* 顯示即時錯誤訊息 (Blocking) */}
+                        {(Object.keys(analysisGroupErrors).length > 0 || Object.keys(analysisGroupRowErrors).length > 0) && (
+                          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                            {/* Group-level Errors */}
+                            {Object.values(analysisGroupErrors).map((err, i) => (
+                              <div key={`group-err-${i}`} className="flex items-center mb-1 last:mb-0">
+                                <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+                                {err}
+                              </div>
+                            ))}
+                            {/* Row-level Errors */}
+                            {Object.entries(analysisGroupRowErrors).map(([rowIdx, rowErr]) => (
+                              Object.entries(rowErr).map(([groupKey, msg], i) => {
+                                const groupLabels = {
+                                  analysisGroup1: '分析組別一',
+                                  analysisGroup2: '分析組別二',
+                                  analysisGroup3: '分析組別三'
+                                };
+                                return (
+                                  <div key={`row-err-${rowIdx}-${i}`} className="flex items-center mb-1 last:mb-0">
+                                    <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+                                    第 {parseInt(rowIdx) + 1} 列 [{groupLabels[groupKey] || groupKey}]: {msg}
+                                  </div>
+                                );
+                              })
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 顯示即時警告訊息 (Non-blocking) */}
+                        {Object.keys(analysisGroupWarnings).length > 0 && (
+                          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                            {Object.values(analysisGroupWarnings).map((warn, i) => (
+                              <div key={i} className="flex items-center">
+                                <AlertCircle size={16} className="mr-2" />
+                                {warn}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="overflow-x-auto">
-                          <table className="w-full text-sm border-collapse bg-white">
+                          <table className="w-full text-sm border-collapse bg-white table-fixed">
+                            <colgroup>
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                            </colgroup>
                             <thead>
                               <tr>
-                                <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
-                                <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
-                                <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
+                                <th colSpan="2" className={`border p-2 bg-blue-50 text-center ${analysisGroupErrors.analysisGroup1 ? 'border-red-500' : ''}`}>分析組別一</th>
+                                <th colSpan="2" className={`border p-2 bg-green-50 text-center ${analysisGroupErrors.analysisGroup2 ? 'border-red-500' : ''}`}>分析組別二</th>
+                                <th colSpan="2" className={`border p-2 bg-yellow-50 text-center ${analysisGroupErrors.analysisGroup3 ? 'border-red-500' : ''}`}>分析組別三</th>
                               </tr>
                               <tr className="bg-gray-100">
-                                <th className="border p-2 text-center min-w-[150px]">Control</th>
-                                <th className="border p-2 text-center min-w-[150px]">Treatment</th>
-                                <th className="border p-2 text-center min-w-[150px]">Control</th>
-                                <th className="border p-2 text-center min-w-[150px]">Treatment</th>
-                                <th className="border p-2 text-center min-w-[150px]">Control</th>
-                                <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                                <th className="border p-2 text-center">Control</th>
+                                <th className="border p-2 text-center">Treatment</th>
+                                <th className="border p-2 text-center">Control</th>
+                                <th className="border p-2 text-center">Treatment</th>
+                                <th className="border p-2 text-center">Control</th>
+                                <th className="border p-2 text-center">Treatment</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -5222,7 +5345,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group1Options.map((opt, i) => (
@@ -5245,7 +5368,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group1 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
                                     >
                                       <option value="">請選擇</option>
                                       {group1Options.map((opt, i) => (
@@ -5268,7 +5391,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
                                     >
                                       <option value="">請選擇</option>
                                       {group2Options.map((opt, i) => (
@@ -5291,7 +5414,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
                                     >
                                       <option value="">請選擇</option>
                                       {group2Options.map((opt, i) => (
@@ -5314,7 +5437,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
                                     >
                                       <option value="">請選擇</option>
                                       {group3Options.map((opt, i) => (
@@ -5337,7 +5460,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
                                     >
                                       <option value="">請選擇</option>
                                       {group3Options.map((opt, i) => (
@@ -5349,8 +5472,6 @@ const TGIAOrderForm = () => {
                               ))}
                             </tbody>
                           </table>
-                        </div>
-                        <div className="mt-2 flex gap-2">
                           <button
                             type="button"
                             onClick={() => {
@@ -5365,9 +5486,9 @@ const TGIAOrderForm = () => {
                                 }
                               }));
                             }}
-                            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                            className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center"
                           >
-                            + 新增比較組
+                            <Plus size={16} className="mr-1" /> 新增比較組
                           </button>
                           {formData.analysisRequirements.comparisonGroups.length > 1 && (
                             <button
@@ -5422,70 +5543,7 @@ const TGIAOrderForm = () => {
     );
   };
 
-  // 渲染步驟4：簽名確認
-  // const renderStep4 = () => (
-  //   <div className="space-y-6">
-  //     <div className="border-2 border-purple-300 rounded-lg p-6 bg-purple-50">
-  //       <h3 className="text-xl font-bold text-gray-800 mb-6">委託人簽名確認</h3>
-  //       <div className="bg-white rounded-lg p-6 border-2 border-gray-200">
-  //         {!formData.signature ? (
-  //           <div className="text-center py-8">
-  //             <div className="mb-4">
-  //               <Edit3 size={48} className="mx-auto text-blue-600" />
-  //             </div>
-  //             <p className="text-gray-700 mb-2 font-medium">請簽名確認訂單內容無誤</p>
-  //             <p className="text-sm text-gray-500 mb-6">
-  //               支援手寫簽名 ✍️ 或上傳圖片 📤
-  //             </p>
-  //             <button
-  //               type="button"
-  //               // onClick={() => setShowSignaturePad(true)}
-  //               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-  //             >
-  //               <Edit3 size={20} />
-  //               開始簽名
-  //             </button>
-  //           </div>
-  //         ) : (
-  //           <div className="space-y-4">
-  //             <div className="flex items-center justify-between">
-  //               <p className="text-green-600 font-semibold flex items-center gap-2">
-  //                 <Check size={24} />
-  //                 已完成簽名
-  //               </p>
-  //               <div className="flex gap-2">
-  //                 <button
-  //                   type="button"
-  //                   // onClick={() => setShowSignaturePad(true)}
-  //                   className="px-4 py-2 text-sm border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50"
-  //                 >
-  //                   重新簽名
-  //                 </button>
-  //                 <button
-  //                   type="button"
-  //                   onClick={clearSignature}
-  //                   className="px-4 py-2 text-sm text-red-600 border-2 border-red-300 rounded-lg hover:bg-red-50"
-  //                 >
-  //                   清除簽名
-  //                 </button>
-  //               </div>
-  //             </div>
-  //             <div className="border-2 border-gray-300 rounded-lg p-4">
-  //               <img 
-  //                 src={formData.signature} 
-  //                 alt="委託人簽名" 
-  //                 className="max-w-full h-auto mx-auto"
-  //                 style={{ maxHeight: '150px' }}
-  //               />
-  //             </div>
-  //           </div>
-  //         )}
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
 
-  // 渲染步驟5：預覽與提交
   // 渲染步驟5：預覽與提交
   const renderStep4 = () => (
     <div className="space-y-6">
@@ -5589,9 +5647,9 @@ const TGIAOrderForm = () => {
           <div className="border-b pb-4">
             <h4 className="font-semibold text-gray-700 mb-3 text-lg">⚡ 急件與樣品返還</h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className={`p-3 rounded border-2 ${formData.isUrgent ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'}`}>
+              <div className={`p - 3 rounded border - 2 ${formData.isUrgent ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'} `}>
                 <span className="text-gray-600 font-medium">急件狀態：</span>
-                <span className={`font-bold ml-2 ${formData.isUrgent ? 'text-red-600' : 'text-green-600'}`}>
+                <span className={`font - bold ml - 2 ${formData.isUrgent ? 'text-red-600' : 'text-green-600'} `}>
                   {formData.isUrgent ? '急件（費用+10%）' : '正常件'}
                 </span>
               </div>
@@ -5901,11 +5959,12 @@ const TGIAOrderForm = () => {
             <button
               onClick={handleSubmit}
               disabled={isLocked}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition 
+              className={`flex items - center gap - 2 px - 6 py - 3 rounded - lg font - medium transition 
               ${isLocked
                   ? 'bg-gray-400 text-white cursor-not-allowed'   // 🔒 鎖定狀態
-                  : 'bg-green-600 hover:bg-green-700 text-white'} // ✅ 正常狀態
-            `}
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+                } // ✅ 正常狀態
+                                        `}
             >
               <Send size={20} />
               {isLocked ? '需求已提交' : '提交需求'}
@@ -5915,10 +5974,10 @@ const TGIAOrderForm = () => {
 
         {/* 訊息提示 */}
         {message && (
-          <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${submitted || message.includes('成功')
+          <div className={`mt - 4 p - 4 rounded - lg flex items - center gap - 2 ${submitted || message.includes('成功')
             ? 'bg-green-50 border border-green-200 text-green-800'
             : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
-            }`}>
+            } `}>
             <AlertCircle size={20} />
             <span>{message}</span>
           </div>
