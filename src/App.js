@@ -3602,7 +3602,8 @@ const TGIAOrderForm = () => {
                 }
                 handleInputChange(e);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              disabled={isOnlyAnalysis && isRNAseqAnalysis}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isOnlyAnalysis && isRNAseqAnalysis ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             >
               {/* 🆕 只顯示允許的選項 */}
               {allowedSampleTypes.map(type => (
@@ -3611,6 +3612,13 @@ const TGIAOrderForm = () => {
                 </option>
               ))}
             </select>
+
+            {/* 🆕 RNAseq 分析限制提示 */}
+            {isOnlyAnalysis && isRNAseqAnalysis && (
+              <p className="text-xs text-orange-600 mt-1">
+                📌 RNAseq 純分析服務，樣品類型自動選擇「其他」
+              </p>
+            )}
 
             {/* 🆕 當選擇的類型不被允許時顯示警告 */}
             {formData.sampleType && !allowedSampleTypes.includes(formData.sampleType) && (
@@ -4590,15 +4598,27 @@ const TGIAOrderForm = () => {
                 name="preservationMethod"
                 value={formData.preservationMethod}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                disabled={isOnlyAnalysis && isRNAseqAnalysis}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isOnlyAnalysis && isRNAseqAnalysis ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
-                <option>Nuclease-free H2O</option>
-                <option>Tris Buffer</option>
-                <option>Trizol</option>
-                <option>EDTA Tube(Blood)</option>
-                <option>Tempus Tube(Blood)</option>
-                <option>其他</option>
+                {isOnlyAnalysis && isRNAseqAnalysis ? (
+                  <option>其他</option>
+                ) : (
+                  <>
+                    <option>Nuclease-free H2O</option>
+                    <option>Tris Buffer</option>
+                    <option>Trizol</option>
+                    <option>EDTA Tube(Blood)</option>
+                    <option>Tempus Tube(Blood)</option>
+                    <option>其他</option>
+                  </>
+                )}
               </select>
+              {isOnlyAnalysis && isRNAseqAnalysis && (
+                <p className="text-xs text-orange-600 mt-1">
+                  📌 RNAseq 純分析服務，保存方式自動選擇「其他」
+                </p>
+              )}
               {/* 🆕 當選擇「其他」時顯示輸入框 */}
               {(formData.preservationMethod === '其他' || (isOnlyAnalysis && isRNAseqAnalysis)) && (
                 <input
@@ -4664,13 +4684,25 @@ const TGIAOrderForm = () => {
                 name="shippingMethod"
                 value={formData.shippingMethod}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                disabled={isOnlyAnalysis && isRNAseqAnalysis}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isOnlyAnalysis && isRNAseqAnalysis ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
-                <option>冷凍(乾冰)</option>
-                <option>冷藏</option>
-                <option>常溫</option>
-                <option>其他</option>
+                {isOnlyAnalysis && isRNAseqAnalysis ? (
+                  <option>其他</option>
+                ) : (
+                  <>
+                    <option>冷凍(乾冰)</option>
+                    <option>冷藏</option>
+                    <option>常溫</option>
+                    <option>其他</option>
+                  </>
+                )}
               </select>
+              {isOnlyAnalysis && isRNAseqAnalysis && (
+                <p className="text-xs text-orange-600 mt-1">
+                  📌 RNAseq 純分析服務，寄送方式自動選擇「其他」
+                </p>
+              )}
               {/* 🆕 當選擇「其他」時顯示輸入框 */}
               {(formData.shippingMethod === '其他' || (isOnlyAnalysis && isRNAseqAnalysis)) && (
                 <input
