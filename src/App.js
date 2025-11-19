@@ -313,7 +313,10 @@ const TGIAOrderForm = () => {
         pMethod: 'p-value',
         pCutoff: ''
       },
-      customRequirements: ''
+      customRequirements: '',
+      comparisonGroups: [
+        { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
+      ]
     }
   });
   const selectedPackage = formData?.selectedPackage ?? '';
@@ -5029,6 +5032,233 @@ const TGIAOrderForm = () => {
                     </div>
                   </div>
                 )}
+
+                {/* 2.5 差異表達分析比較組 */}
+                {showDEParams && (() => {
+                  // 從樣本表中提取分析組別的唯一值
+                  const getUniqueValues = (columnName) => {
+                    const sampleSheet = isOnlyAnalysis ? formData.sampleInfo.sampleSheet : [];
+                    const values = sampleSheet
+                      .map(row => {
+                        if (columnName === 'analysisGroup1') return row.analysisGroup1;
+                        if (columnName === 'analysisGroup2') return row.analysisGroup2;
+                        if (columnName === 'analysisGroup3') return row.analysisGroup3;
+                        return '';
+                      })
+                      .filter(v => v && v.trim() !== '');
+                    return [...new Set(values)]; // 去重
+                  };
+
+                  const group1Options = getUniqueValues('analysisGroup1');
+                  const group2Options = getUniqueValues('analysisGroup2');
+                  const group3Options = getUniqueValues('analysisGroup3');
+
+                  return (
+                    <div className="mb-6 p-4 bg-white rounded border border-orange-200">
+                      <h4 className="font-semibold text-gray-700 mb-3">差異表達分析比較組</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse bg-white">
+                          <thead>
+                            <tr>
+                              <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
+                              <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
+                              <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
+                            </tr>
+                            <tr className="bg-gray-100">
+                              <th className="border p-2 text-center min-w-[150px]">Control</th>
+                              <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                              <th className="border p-2 text-center min-w-[150px]">Control</th>
+                              <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                              <th className="border p-2 text-center min-w-[150px]">Control</th>
+                              <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.analysisRequirements.comparisonGroups.map((row, rowIdx) => (
+                              <tr key={rowIdx}>
+                                {/* 分析組別一 - Control */}
+                                <td className="border p-2">
+                                  <select
+                                    value={row.group1Control}
+                                    onChange={(e) => {
+                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                      newGroups[rowIdx].group1Control = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        analysisRequirements: {
+                                          ...prev.analysisRequirements,
+                                          comparisonGroups: newGroups
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  >
+                                    <option value="">請選擇</option>
+                                    {group1Options.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                {/* 分析組別一 - Treatment */}
+                                <td className="border p-2">
+                                  <select
+                                    value={row.group1Treatment}
+                                    onChange={(e) => {
+                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                      newGroups[rowIdx].group1Treatment = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        analysisRequirements: {
+                                          ...prev.analysisRequirements,
+                                          comparisonGroups: newGroups
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  >
+                                    <option value="">請選擇</option>
+                                    {group1Options.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                {/* 分析組別二 - Control */}
+                                <td className="border p-2">
+                                  <select
+                                    value={row.group2Control}
+                                    onChange={(e) => {
+                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                      newGroups[rowIdx].group2Control = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        analysisRequirements: {
+                                          ...prev.analysisRequirements,
+                                          comparisonGroups: newGroups
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  >
+                                    <option value="">請選擇</option>
+                                    {group2Options.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                {/* 分析組別二 - Treatment */}
+                                <td className="border p-2">
+                                  <select
+                                    value={row.group2Treatment}
+                                    onChange={(e) => {
+                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                      newGroups[rowIdx].group2Treatment = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        analysisRequirements: {
+                                          ...prev.analysisRequirements,
+                                          comparisonGroups: newGroups
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  >
+                                    <option value="">請選擇</option>
+                                    {group2Options.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                {/* 分析組別三 - Control */}
+                                <td className="border p-2">
+                                  <select
+                                    value={row.group3Control}
+                                    onChange={(e) => {
+                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                      newGroups[rowIdx].group3Control = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        analysisRequirements: {
+                                          ...prev.analysisRequirements,
+                                          comparisonGroups: newGroups
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  >
+                                    <option value="">請選擇</option>
+                                    {group3Options.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                {/* 分析組別三 - Treatment */}
+                                <td className="border p-2">
+                                  <select
+                                    value={row.group3Treatment}
+                                    onChange={(e) => {
+                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                      newGroups[rowIdx].group3Treatment = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        analysisRequirements: {
+                                          ...prev.analysisRequirements,
+                                          comparisonGroups: newGroups
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  >
+                                    <option value="">請選擇</option>
+                                    {group3Options.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              analysisRequirements: {
+                                ...prev.analysisRequirements,
+                                comparisonGroups: [
+                                  ...prev.analysisRequirements.comparisonGroups,
+                                  { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
+                                ]
+                              }
+                            }));
+                          }}
+                          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                        >
+                          + 新增比較組
+                        </button>
+                        {formData.analysisRequirements.comparisonGroups.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                analysisRequirements: {
+                                  ...prev.analysisRequirements,
+                                  comparisonGroups: prev.analysisRequirements.comparisonGroups.slice(0, -1)
+                                }
+                              }));
+                            }}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                          >
+                            - 刪除最後一筆
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* 3. 客製化需求 */}
                 {showCustomReq && (
