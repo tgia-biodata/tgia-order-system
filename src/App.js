@@ -252,7 +252,11 @@ const TGIAOrderForm = () => {
         vol: '',
         ngsConc: '',
         expectedSeq: '',
-        note: ''
+        note: '',
+        analysisGroup1: '',
+        analysisGroup2: '',
+        analysisGroup3: '',
+        sampleSource: ''
       }],
       runConfig: {
         sequencer: '不限',
@@ -285,7 +289,12 @@ const TGIAOrderForm = () => {
         ratio260280: '',
         ratio260230: '',
         dqnRqn: '',
-        note: ''
+        dqnRqn: '',
+        note: '',
+        analysisGroup1: '',
+        analysisGroup2: '',
+        analysisGroup3: '',
+        sampleSource: ''
       }]
     },
     preservationMethod: 'Nuclease-free H2O',
@@ -296,9 +305,41 @@ const TGIAOrderForm = () => {
     shippingMethod: '冷凍(乾冰)',
     shippingMethodOther: '',
     notes: '',
-    signature: null
+    signature: null,
+    analysisRequirements: {
+      deParams: {
+        logFC: '',
+        pMethod: 'p-value',
+        pCutoff: ''
+      },
+      customRequirements: ''
+    }
   });
   const selectedPackage = formData?.selectedPackage ?? '';
+
+  // 🆕 監聽服務項目變更，強制設定保存與寄送方式
+  React.useEffect(() => {
+    const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+    if (isOnlyAnalysis) {
+      const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+      if (analysisItem) {
+        const isRNAseq = analysisItem.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+        if (isRNAseq) {
+          setFormData(prev => {
+            // 只有當值不是 '其他' 時才更新，避免無窮迴圈
+            if (prev.preservationMethod !== '其他' || prev.shippingMethod !== '其他') {
+              return {
+                ...prev,
+                preservationMethod: '其他',
+                shippingMethod: '其他'
+              };
+            }
+            return prev;
+          });
+        }
+      }
+    }
+  }, [formData.selectedServiceCategories, formData.serviceItems]);
 
 
 
@@ -3396,11 +3437,15 @@ const TGIAOrderForm = () => {
 
   // 渲染步驟3：送測樣品資訊 
   const renderStep3 = () => {
+    // 🆕 定義變數供 JSX 使用
+    const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+    const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+    const isRNAseqAnalysis = analysisItem?.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+
     const totalSequencing = calculateTotalSequencing(); // Step2 的總定序量
     const expectedSequencing = calculateExpectedSequencing(); // Step3 樣本的預期定序量
     const isOverLimit = expectedSequencing > totalSequencing; // 是否超過
     // 🆕 獲取允許的樣品類型
-    // 🆕 檢查是否為 AP 套組
     // 🆕 檢查是否為 AP 套組
     const isAPPackage = formData.selectedServiceCategories.includes('套組產品 (AP)');
     // 🆕 計算 AP 套組資訊（含數量）
@@ -3432,15 +3477,6 @@ const TGIAOrderForm = () => {
     const restrictionMessage = isAPPackage
       ? `📦 此為套組產品，樣品類型固定為：${apPackageInfo?.binding?.sampleType || '未設定'}`
       : getSampleTypeRestrictionMessage();
-
-    // 🆕 檢查是否為 RNAseq 分析 (用於顯示分析需求區塊)
-    const isRNAseqAnalysis = (() => {
-      const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
-      if (analysisItem) {
-        return analysisItem.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
-      }
-      return false;
-    })();
 
     return (
       <div className="space-y-6">
@@ -4564,7 +4600,7 @@ const TGIAOrderForm = () => {
                 <option>其他</option>
               </select>
               {/* 🆕 當選擇「其他」時顯示輸入框 */}
-              {formData.preservationMethod === '其他' && (
+              {(formData.preservationMethod === '其他' || (isOnlyAnalysis && isRNAseqAnalysis)) && (
                 <input
                   type="text"
                   name="preservationMethodOther"
@@ -4636,7 +4672,7 @@ const TGIAOrderForm = () => {
                 <option>其他</option>
               </select>
               {/* 🆕 當選擇「其他」時顯示輸入框 */}
-              {formData.shippingMethod === '其他' && (
+              {(formData.shippingMethod === '其他' || (isOnlyAnalysis && isRNAseqAnalysis)) && (
                 <input
                   type="text"
                   name="shippingMethodOther"
@@ -4665,50 +4701,217 @@ const TGIAOrderForm = () => {
         </div>
         {/* 🆕 分析需求區塊 (當選擇 RNAseq 分析時顯示) */}
         {
-          isRNAseqAnalysis && (
-            <div className="border-2 border-orange-300 rounded-lg p-6 bg-orange-50">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">分析需求</h3>
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  針對 RNAseq 分析，請確認以下分析需求：
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse bg-white">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border p-2 text-left">Sample Name</th>
-                        <th className="border p-2 text-left">備註 (分析需求)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        // 根據樣品類型決定使用哪個 Sheet
-                        const rows = formData.sampleType === 'Library'
-                          ? formData.libraryInfo.sampleSheet
-                          : formData.sampleInfo.sampleSheet;
+          isRNAseqAnalysis && (() => {
+            // 取得分析服務項目代碼
+            const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+            const serviceCode = analysisItem?.services[0]?.service?.split(' ')[0] || '';
 
-                        return rows.map((row, idx) => (
-                          row.sampleName && (
-                            <tr key={idx}>
-                              <td className="border p-2">{row.sampleName}</td>
-                              <td className="border p-2">
-                                <input
-                                  type="text"
-                                  className="w-full px-2 py-1 border rounded"
-                                  placeholder="請填寫分析需求"
-                                // 這裡暫時不綁定 state，因為需求沒說要存去哪，先做 UI
-                                />
-                              </td>
-                            </tr>
-                          )
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
+            // 判斷顯示區塊
+            const showSampleTable = ['A204', 'A205', 'A206', 'A207'].some(code => serviceCode.includes(code));
+            const showDEParams = ['A205', 'A207'].some(code => serviceCode.includes(code));
+            const showCustomReq = ['A206', 'A207'].some(code => serviceCode.includes(code));
+
+            if (!showSampleTable) return null;
+
+            return (
+              <div className="border-2 border-orange-300 rounded-lg p-6 bg-orange-50">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">分析需求</h3>
+
+                {/* 1. 樣本表 */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-3">樣本表</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse bg-white">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border p-2 text-left min-w-[150px]">Sample Name</th>
+                          <th className="border p-2 text-left min-w-[120px]">分析組別一</th>
+                          <th className="border p-2 text-left min-w-[120px]">分析組別二</th>
+                          <th className="border p-2 text-left min-w-[120px]">分析組別三</th>
+                          <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
+                          <th className="border p-2 text-left min-w-[150px]">備註</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const rows = formData.sampleType === 'Library'
+                            ? formData.libraryInfo.sampleSheet
+                            : formData.sampleInfo.sampleSheet;
+
+                          return rows.map((row, idx) => (
+                            row.sampleName && (
+                              <tr key={idx}>
+                                <td className="border p-2">{row.sampleName}</td>
+                                <td className="border p-2">
+                                  <input
+                                    type="text"
+                                    value={row.analysisGroup1 || ''}
+                                    onChange={(e) => {
+                                      const newSheet = [...rows];
+                                      newSheet[idx] = { ...newSheet[idx], analysisGroup1: e.target.value };
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                          sampleSheet: newSheet
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border rounded"
+                                  />
+                                </td>
+                                <td className="border p-2">
+                                  <input
+                                    type="text"
+                                    value={row.analysisGroup2 || ''}
+                                    onChange={(e) => {
+                                      const newSheet = [...rows];
+                                      newSheet[idx] = { ...newSheet[idx], analysisGroup2: e.target.value };
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                          sampleSheet: newSheet
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border rounded"
+                                  />
+                                </td>
+                                <td className="border p-2">
+                                  <input
+                                    type="text"
+                                    value={row.analysisGroup3 || ''}
+                                    onChange={(e) => {
+                                      const newSheet = [...rows];
+                                      newSheet[idx] = { ...newSheet[idx], analysisGroup3: e.target.value };
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                          sampleSheet: newSheet
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border rounded"
+                                  />
+                                </td>
+                                <td className="border p-2">
+                                  <input
+                                    type="text"
+                                    value={row.sampleSource || ''}
+                                    onChange={(e) => {
+                                      const newSheet = [...rows];
+                                      newSheet[idx] = { ...newSheet[idx], sampleSource: e.target.value };
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                          sampleSheet: newSheet
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border rounded"
+                                  />
+                                </td>
+                                <td className="border p-2">
+                                  <input
+                                    type="text"
+                                    className="w-full px-2 py-1 border rounded"
+                                    placeholder="請填寫分析需求"
+                                  />
+                                </td>
+                              </tr>
+                            )
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* 2. 差異表達基因分析參數 */}
+                {showDEParams && (
+                  <div className="mb-6 p-4 bg-white rounded border border-orange-200">
+                    <h4 className="font-semibold text-gray-700 mb-3">差異表達基因分析參數</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">|logFC|</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={formData.analysisRequirements.deParams.logFC}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            analysisRequirements: {
+                              ...prev.analysisRequirements,
+                              deParams: { ...prev.analysisRequirements.deParams, logFC: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="例如: 1.0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">P method</label>
+                        <select
+                          value={formData.analysisRequirements.deParams.pMethod}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            analysisRequirements: {
+                              ...prev.analysisRequirements,
+                              deParams: { ...prev.analysisRequirements.deParams, pMethod: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                          <option value="p-value">p-value</option>
+                          <option value="p-adjust">p-adjust</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">P cutoff</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.analysisRequirements.deParams.pCutoff}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            analysisRequirements: {
+                              ...prev.analysisRequirements,
+                              deParams: { ...prev.analysisRequirements.deParams, pCutoff: e.target.value }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="例如: 0.05"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. 客製化需求 */}
+                {showCustomReq && (
+                  <div className="mb-6">
+                    <h4 className="font-semibold text-gray-700 mb-3">客製化需求</h4>
+                    <textarea
+                      value={formData.analysisRequirements.customRequirements}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        analysisRequirements: {
+                          ...prev.analysisRequirements,
+                          customRequirements: e.target.value
+                        }
+                      }))}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500"
+                      placeholder="請詳細描述您的客製化分析需求..."
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          )
+            );
+          })()
         }
 
       </div>
