@@ -9,7 +9,7 @@
 ```mermaid
 graph TD
     User["使用者 (User)"] -->|填寫表單| Frontend["React 前端 (Frontend)"]
-    Frontend -->|POST /api/orders (JSON)| Backend["Node.js 後端 (Backend)"]
+    Frontend -->|"POST /api/orders (JSON)"| Backend["Node.js 後端 (Backend)"]
     
     subgraph "Server Side (Backend)"
         Backend -->|Save JSON| FS["檔案系統 (File System)"]
