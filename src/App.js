@@ -144,7 +144,8 @@ const TGIAOrderForm = () => {
   const [fieldErrors, setFieldErrors] = useState({
     sampleSheet: {}, // { rowIndex: { fieldName: errorMessage } }
     librarySampleSheet: {},
-    libraryDetailSheet: {}
+    libraryDetailSheet: {},
+    analysisRequirements: {} // { logFC: error, pCutoff: error }
   });
 
   // 拖放上傳 Excel 檔案功能
@@ -835,7 +836,8 @@ const TGIAOrderForm = () => {
     setFieldErrors({
       sampleSheet: {},
       librarySampleSheet: {},
-      libraryDetailSheet: {}
+      libraryDetailSheet: {},
+      analysisRequirements: {}
     });
     switch (step) {
       case 0: // Step 0 驗證
@@ -926,7 +928,8 @@ const TGIAOrderForm = () => {
         const errors = {
           sampleSheet: {},
           librarySampleSheet: {},
-          libraryDetailSheet: {}
+          libraryDetailSheet: {},
+          analysisRequirements: {}
         };
 
         if (formData.sampleType === 'Library') {
@@ -1080,9 +1083,76 @@ const TGIAOrderForm = () => {
           });
         }
 
+        // 🆕 DE Parameters 驗證 (RNAseq 分析時)
+        const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+        const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+        const isRNAseqAnalysis = analysisItem?.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+
+        // 檢查服務代碼（例如 "A205 2nd - RNAseq-Advanced" 應該匹配 A205）
+        const selectedService = analysisItem?.services[0]?.service || '';
+        const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
+        console.log('=== DE Parameters Validation Debug ===');
+        console.log('isOnlyAnalysis:', isOnlyAnalysis);
+        console.log('isRNAseqAnalysis:', isRNAseqAnalysis);
+        console.log('selectedService:', selectedService);
+        console.log('showDEParams:', showDEParams);
+
+        if (isOnlyAnalysis && isRNAseqAnalysis && showDEParams) {
+          console.log('Running DE Parameters validation...');
+          const deErrors = {};
+
+          // 檢查 |logFC|
+          const logFC = formData.analysisRequirements.deParams.logFC;
+          console.log('logFC value:', logFC);
+          if (!logFC || logFC.toString().trim() === '') {
+            deErrors.logFC = '|logFC| 不可為空';
+            console.log('logFC error: empty');
+          } else {
+            const value = logFC;
+            if (!isNaN(value)) {
+              const decimalPart = value.toString().split('.')[1];
+              if (decimalPart && decimalPart.length > 1) {
+                deErrors.logFC = '建議使用小數一位';
+                console.log('logFC error: too many decimals');
+              }
+            }
+          }
+
+          // 檢查 P cutoff
+          const pCutoff = formData.analysisRequirements.deParams.pCutoff;
+          console.log('pCutoff value:', pCutoff);
+          if (!pCutoff || pCutoff.toString().trim() === '') {
+            deErrors.pCutoff = 'P cutoff 不可為空';
+            console.log('pCutoff error: empty');
+          } else {
+            const value = parseFloat(pCutoff);
+            if (!isNaN(value) && (value <= 0 || value >= 1)) {
+              deErrors.pCutoff = 'P cutoff 必須介於 0 和 1 之間';
+              console.log('pCutoff error: out of range');
+            }
+          }
+
+          console.log('deErrors:', deErrors);
+          if (Object.keys(deErrors).length > 0) {
+            errors.analysisRequirements = deErrors;
+            console.log('Setting analysisRequirements errors');
+          }
+        } else {
+          console.log('DE Parameters validation skipped - conditions not met');
+        }
+
         // 如果有錯誤，設置錯誤狀態並返回 false
+        console.log('=== Final Validation Check ===');
+        console.log('errors.sampleSheet keys:', Object.keys(errors.sampleSheet).length);
+        console.log('errors.libraryDetailSheet keys:', Object.keys(errors.libraryDetailSheet).length);
+        console.log('errors.analysisRequirements:', errors.analysisRequirements);
+        console.log('errors.analysisRequirements keys:', Object.keys(errors.analysisRequirements || {}).length);
+
         if (Object.keys(errors.sampleSheet).length > 0 ||
-          Object.keys(errors.libraryDetailSheet).length > 0) {
+          Object.keys(errors.libraryDetailSheet).length > 0 ||
+          Object.keys(errors.analysisRequirements || {}).length > 0) {
+          console.log('Validation FAILED - blocking navigation');
           setFieldErrors(errors);
           setMessage('❌ 表格中有錯誤，請檢查紅色標示的欄位');
           return false;
@@ -1109,6 +1179,7 @@ const TGIAOrderForm = () => {
             return false;
           }
         }
+
         break;
     }
 
@@ -4756,8 +4827,8 @@ const TGIAOrderForm = () => {
                     <table className="w-full text-sm border-collapse bg-white">
                       <thead>
                         <tr className="bg-gray-100">
-                          <th className="border p-2 text-left min-w-[150px]">Sample Name</th>
-                          <th className="border p-2 text-left min-w-[120px]">分析組別一</th>
+                          <th className="border p-2 text-left min-w-[150px]">Sample Name <span className="text-red-600">*</span></th>
+                          <th className="border p-2 text-left min-w-[120px]">分析組別一 <span className="text-red-600">*</span></th>
                           <th className="border p-2 text-left min-w-[120px]">分析組別二</th>
                           <th className="border p-2 text-left min-w-[120px]">分析組別三</th>
                           <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
@@ -4868,7 +4939,7 @@ const TGIAOrderForm = () => {
                     <h4 className="font-semibold text-gray-700 mb-3">差異表達基因分析參數</h4>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">|logFC|</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">|logFC| <span className="text-red-600">*</span></label>
                         <input
                           type="number"
                           step="0.1"
@@ -4880,12 +4951,31 @@ const TGIAOrderForm = () => {
                               deParams: { ...prev.analysisRequirements.deParams, logFC: e.target.value }
                             }
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.logFC ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                           placeholder="例如: 1.0"
                         />
+                        {fieldErrors.analysisRequirements?.logFC && (
+                          <p className="text-xs text-red-600 mt-1">
+                            ⚠️ {fieldErrors.analysisRequirements.logFC}
+                          </p>
+                        )}
+                        {!fieldErrors.analysisRequirements?.logFC && (() => {
+                          const value = formData.analysisRequirements.deParams.logFC;
+                          if (value && !isNaN(value)) {
+                            const decimalPart = value.toString().split('.')[1];
+                            if (decimalPart && decimalPart.length > 1) {
+                              return (
+                                <p className="text-xs text-red-600 mt-1">
+                                  ⚠️ 建議使用小數一位 (例如: 1.5)
+                                </p>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">P method</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">P method <span className="text-red-600">*</span></label>
                         <select
                           value={formData.analysisRequirements.deParams.pMethod}
                           onChange={(e) => setFormData(prev => ({
@@ -4902,10 +4992,12 @@ const TGIAOrderForm = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">P cutoff</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">P cutoff <span className="text-red-600">*</span></label>
                         <input
                           type="number"
                           step="0.01"
+                          min="0"
+                          max="1"
                           value={formData.analysisRequirements.deParams.pCutoff}
                           onChange={(e) => setFormData(prev => ({
                             ...prev,
@@ -4914,9 +5006,25 @@ const TGIAOrderForm = () => {
                               deParams: { ...prev.analysisRequirements.deParams, pCutoff: e.target.value }
                             }
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.pCutoff ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                           placeholder="例如: 0.05"
                         />
+                        {fieldErrors.analysisRequirements?.pCutoff && (
+                          <p className="text-xs text-red-600 mt-1">
+                            ⚠️ {fieldErrors.analysisRequirements.pCutoff}
+                          </p>
+                        )}
+                        {!fieldErrors.analysisRequirements?.pCutoff && (() => {
+                          const value = parseFloat(formData.analysisRequirements.deParams.pCutoff);
+                          if (!isNaN(value) && (value <= 0 || value >= 1)) {
+                            return (
+                              <p className="text-xs text-red-600 mt-1">
+                                ⚠️ P cutoff 必須介於 0 和 1 之間 (0 {`<`} P {`<`} 1)
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
