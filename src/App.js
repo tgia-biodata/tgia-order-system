@@ -1332,8 +1332,11 @@ const TGIAOrderForm = () => {
           }
         }
 
-        // 🆕 分析組別一驗證 (RNAseq 分析時)
-        if (isRNAseqAnalysis) {
+        // 🆕 分析組別一驗證 (只有 A205 和 A207 需要填寫分析組別一)
+        // A204 和 A206 的樣本表沒有分析組別欄位，所以不需要驗證
+        const showAnalysisGroups = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
+        if (isRNAseqAnalysis && showAnalysisGroups) {
           const sampleSheet = formData.sampleType === 'Library'
             ? formData.libraryInfo.sampleSheet
             : formData.sampleInfo.sampleSheet;
@@ -5167,6 +5170,10 @@ const TGIAOrderForm = () => {
 
             const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
 
+            // 🆕 A204 和 A206 的樣本表只顯示 Sample Name 和備註
+            // A205 和 A207 才顯示完整的分析組別欄位
+            const showAnalysisGroups = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
             if (!showSampleTable) return null;
 
             // 🆕 驗證分析組別一致性 (Real-time) - 使用 Shared Function
@@ -5186,10 +5193,14 @@ const TGIAOrderForm = () => {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border p-2 text-left min-w-[150px]">Sample Name <span className="text-red-600">*</span></th>
-                          <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一 <span className="text-red-600">*</span></th>
-                          <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別</th>
-                          <th className="border p-2 text-left min-w-[120px] bg-yellow-50">分析組別三</th>
-                          <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
+                          {showAnalysisGroups && (
+                            <>
+                              <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一 <span className="text-red-600">*</span></th>
+                              <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別二</th>
+                              <th className="border p-2 text-left min-w-[120px] bg-yellow-50">分析組別三</th>
+                              <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
+                            </>
+                          )}
                           <th className="border p-2 text-left min-w-[150px]">備註</th>
                         </tr>
                       </thead>
@@ -5203,35 +5214,93 @@ const TGIAOrderForm = () => {
                             row.sampleName && (
                               <tr key={idx}>
                                 <td className="border p-2">{row.sampleName}</td>
+                                {showAnalysisGroups && (
+                                  <>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.analysisGroup1 || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], analysisGroup1: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet?.[idx]?.analysisGroup1
+                                          ? 'border-red-500 bg-red-50'
+                                          : 'border-gray-300'
+                                          }`}
+                                        placeholder={row.sampleName || ''}
+                                      />
+                                    </td>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.analysisGroup2 || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], analysisGroup2: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full px-2 py-1 border rounded"
+                                      />
+                                    </td>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.analysisGroup3 || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], analysisGroup3: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full px-2 py-1 border rounded"
+                                      />
+                                    </td>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.sampleSource || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], sampleSource: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full px-2 py-1 border rounded"
+                                      />
+                                    </td>
+                                  </>
+                                )}
                                 <td className="border p-2">
                                   <input
                                     type="text"
-                                    value={row.analysisGroup1 || ''}
+                                    value={row.analysisNote || ''}
                                     onChange={(e) => {
                                       const newSheet = [...rows];
-                                      newSheet[idx] = { ...newSheet[idx], analysisGroup1: e.target.value };
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
-                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
-                                          sampleSheet: newSheet
-                                        }
-                                      }));
-                                    }}
-                                    className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet?.[idx]?.analysisGroup1
-                                      ? 'border-red-500 bg-red-50'
-                                      : 'border-gray-300'
-                                      }`}
-                                    placeholder={row.sampleName || ''}
-                                  />
-                                </td>
-                                <td className="border p-2">
-                                  <input
-                                    type="text"
-                                    value={row.analysisGroup2 || ''}
-                                    onChange={(e) => {
-                                      const newSheet = [...rows];
-                                      newSheet[idx] = { ...newSheet[idx], analysisGroup2: e.target.value };
+                                      newSheet[idx] = { ...newSheet[idx], analysisNote: e.target.value };
                                       setFormData(prev => ({
                                         ...prev,
                                         [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
@@ -5241,61 +5310,6 @@ const TGIAOrderForm = () => {
                                       }));
                                     }}
                                     className="w-full px-2 py-1 border rounded"
-                                  />
-                                </td>
-                                <td className="border p-2">
-                                  <input
-                                    type="text"
-                                    value={row.analysisGroup3 || ''}
-                                    onChange={(e) => {
-                                      const newSheet = [...rows];
-                                      newSheet[idx] = { ...newSheet[idx], analysisGroup3: e.target.value };
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
-                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
-                                          sampleSheet: newSheet
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border rounded"
-                                  />
-                                </td>
-                                <td className="border p-2">
-                                  <input
-                                    type="text"
-                                    value={row.sampleSource || ''}
-                                    onChange={(e) => {
-                                      const newSheet = [...rows];
-                                      newSheet[idx] = { ...newSheet[idx], sampleSource: e.target.value };
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
-                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
-                                          sampleSheet: newSheet
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border rounded"
-                                  />
-                                </td>
-                                <td className="border p-2">
-                                  <input
-                                    type="text"
-                                    value={row.note || ''}
-                                    onChange={(e) => {
-                                      const newSheet = [...rows];
-                                      newSheet[idx] = { ...newSheet[idx], note: e.target.value };
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
-                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
-                                          sampleSheet: newSheet
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border rounded"
-                                    placeholder="備註"
                                   />
                                 </td>
                               </tr>
@@ -6041,6 +6055,8 @@ const TGIAOrderForm = () => {
               selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
             const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
             const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
+            // 🆕 A204 和 A206 只顯示 Sample Name 和備註
+            const showAnalysisGroups = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
 
             if (!showSampleTable) return null;
 
@@ -6089,10 +6105,14 @@ const TGIAOrderForm = () => {
                         <thead>
                           <tr className="bg-gray-100">
                             <th className="border p-2">Sample Name</th>
-                            <th className="border p-2 bg-blue-50">分析組別一</th>
-                            <th className="border p-2 bg-green-50">分析組別二</th>
-                            <th className="border p-2 bg-yellow-50">分析組別三</th>
-                            <th className="border p-2">樣本來源</th>
+                            {showAnalysisGroups && (
+                              <>
+                                <th className="border p-2 bg-blue-50">分析組別一</th>
+                                <th className="border p-2 bg-green-50">分析組別二</th>
+                                <th className="border p-2 bg-yellow-50">分析組別三</th>
+                                <th className="border p-2">樣本來源</th>
+                              </>
+                            )}
                             <th className="border p-2">備註</th>
                           </tr>
                         </thead>
@@ -6102,11 +6122,15 @@ const TGIAOrderForm = () => {
                             .map((row, idx) => (
                               <tr key={idx} className="bg-white">
                                 <td className="border p-2">{row.sampleName}</td>
-                                <td className="border p-2">{row.analysisGroup1 || '-'}</td>
-                                <td className="border p-2">{row.analysisGroup2 || '-'}</td>
-                                <td className="border p-2">{row.analysisGroup3 || '-'}</td>
-                                <td className="border p-2">{row.sampleSource || '-'}</td>
-                                <td className="border p-2">{row.note || '-'}</td>
+                                {showAnalysisGroups && (
+                                  <>
+                                    <td className="border p-2">{row.analysisGroup1 || '-'}</td>
+                                    <td className="border p-2">{row.analysisGroup2 || '-'}</td>
+                                    <td className="border p-2">{row.analysisGroup3 || '-'}</td>
+                                    <td className="border p-2">{row.sampleSource || '-'}</td>
+                                  </>
+                                )}
+                                <td className="border p-2">{row.analysisNote || '-'}</td>
                               </tr>
                             ))}
                         </tbody>
