@@ -5368,7 +5368,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group1 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group1Options.map((opt, i) => (
@@ -5391,7 +5391,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group2Options.map((opt, i) => (
@@ -5414,7 +5414,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group2Options.map((opt, i) => (
@@ -5437,7 +5437,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group3Options.map((opt, i) => (
@@ -5460,7 +5460,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w - full px - 2 py - 1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'} `}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group3Options.map((opt, i) => (
