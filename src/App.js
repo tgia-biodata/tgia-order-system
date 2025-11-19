@@ -5885,102 +5885,140 @@ const TGIAOrderForm = () => {
           </div>
 
           {/* 7. 分析需求預覽 (若有選擇分析服務) */}
-          {formData.selectedServiceCategories.includes('分析服務 (A)') && (
-            <div className="border-b pb-4">
-              <h4 className="font-semibold text-gray-700 mb-3 text-lg">📊 分析需求</h4>
+          {formData.selectedServiceCategories.includes('分析服務 (A)') && (() => {
+            const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+            const selectedService = analysisItem?.services[0]?.service || '';
 
-              {/* 樣本表預覽 */}
-              {formData.analysisRequirements.sampleSheet.some(row => row.sampleName) && (
-                <div className="mb-4">
-                  <h5 className="font-semibold text-gray-700 mb-2">樣本表</h5>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border p-2">序號</th>
-                          <th className="border p-2">Sample Name</th>
-                          <th className="border p-2">分析組別一</th>
-                          <th className="border p-2">分析組別二</th>
-                          <th className="border p-2">分析組別三</th>
-                          <th className="border p-2">樣本來源</th>
-                          <th className="border p-2">備註</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.analysisRequirements.sampleSheet
-                          .filter(row => row.sampleName)
-                          .map((row, idx) => (
-                            <tr key={idx} className="bg-white">
-                              <td className="border p-2 text-center">{idx + 1}</td>
-                              <td className="border p-2">{row.sampleName}</td>
-                              <td className="border p-2">{row.group1}</td>
-                              <td className="border p-2">{row.group2}</td>
-                              <td className="border p-2">{row.group3}</td>
-                              <td className="border p-2">{row.source}</td>
-                              <td className="border p-2">{row.note}</td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+            // 判斷顯示區塊
+            const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
+              selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
+            const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+            const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
 
-              {/* 比較組預覽 */}
-              {formData.analysisRequirements.comparisonGroups.length > 0 && formData.analysisRequirements.comparisonGroups.some(g => g.group1Control || g.group1Treatment) && (
-                <div className="mb-4">
-                  <h5 className="font-semibold text-gray-700 mb-2">差異表達分析比較組</h5>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse table-fixed">
-                      <colgroup>
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
-                          <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
-                          <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
-                        </tr>
-                        <tr className="bg-gray-100">
-                          <th className="border p-2 text-center">Control</th>
-                          <th className="border p-2 text-center">Treatment</th>
-                          <th className="border p-2 text-center">Control</th>
-                          <th className="border p-2 text-center">Treatment</th>
-                          <th className="border p-2 text-center">Control</th>
-                          <th className="border p-2 text-center">Treatment</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.analysisRequirements.comparisonGroups.map((row, idx) => (
-                          <tr key={idx} className="bg-white">
-                            <td className="border p-2 text-center">{row.group1Control || '-'}</td>
-                            <td className="border p-2 text-center">{row.group1Treatment || '-'}</td>
-                            <td className="border p-2 text-center">{row.group2Control || '-'}</td>
-                            <td className="border p-2 text-center">{row.group2Treatment || '-'}</td>
-                            <td className="border p-2 text-center">{row.group3Control || '-'}</td>
-                            <td className="border p-2 text-center">{row.group3Treatment || '-'}</td>
+            if (!showSampleTable) return null;
+
+            // 取得樣本表資料
+            const sampleSheet = formData.sampleType === 'Library'
+              ? formData.libraryInfo.sampleSheet
+              : formData.sampleInfo.sampleSheet;
+
+            return (
+              <div className="border-b pb-4">
+                <h4 className="font-semibold text-gray-700 mb-3 text-lg">📊 分析需求</h4>
+
+                {/* 1. 樣本表預覽 */}
+                {sampleSheet.some(row => row.sampleName) && (
+                  <div className="mb-4">
+                    <h5 className="font-semibold text-gray-700 mb-2">樣本表</h5>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border p-2">Sample Name</th>
+                            <th className="border p-2 bg-blue-50">分析組別一</th>
+                            <th className="border p-2 bg-green-50">分析組別二</th>
+                            <th className="border p-2 bg-yellow-50">分析組別三</th>
+                            <th className="border p-2">樣本來源</th>
+                            <th className="border p-2">備註</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {sampleSheet
+                            .filter(row => row.sampleName)
+                            .map((row, idx) => (
+                              <tr key={idx} className="bg-white">
+                                <td className="border p-2">{row.sampleName}</td>
+                                <td className="border p-2">{row.analysisGroup1 || '-'}</td>
+                                <td className="border p-2">{row.analysisGroup2 || '-'}</td>
+                                <td className="border p-2">{row.analysisGroup3 || '-'}</td>
+                                <td className="border p-2">{row.sampleSource || '-'}</td>
+                                <td className="border p-2">{row.note || '-'}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* 客製化需求預覽 */}
-              {formData.analysisRequirements.customRequirements && (
-                <div className="bg-gray-50 p-3 rounded border border-gray-200">
-                  <h5 className="font-semibold text-gray-700 mb-1">客製化需求</h5>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{formData.analysisRequirements.customRequirements}</p>
-                </div>
-              )}
-            </div>
-          )}
+                {/* 2. 差異表達基因分析參數預覽 */}
+                {showDEParams && (
+                  <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+                    <h5 className="font-semibold text-gray-700 mb-2">差異表達基因分析參數</h5>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-600">|logFC|: </span>
+                        <span className="text-gray-800">{formData.analysisRequirements.deParams.logFC}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">P method: </span>
+                        <span className="text-gray-800">{formData.analysisRequirements.deParams.pMethod}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">P cutoff: </span>
+                        <span className="text-gray-800">{formData.analysisRequirements.deParams.pCutoff}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. 差異表達分析比較組預覽 */}
+                {showDEParams && formData.analysisRequirements.comparisonGroups.length > 0 &&
+                  formData.analysisRequirements.comparisonGroups.some(g => g.group1Control || g.group1Treatment) && (
+                    <div className="mb-4">
+                      <h5 className="font-semibold text-gray-700 mb-2">差異表達分析比較組</h5>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border-collapse table-fixed">
+                          <colgroup>
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
+                              <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
+                              <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
+                            </tr>
+                            <tr className="bg-gray-100">
+                              <th className="border p-2 text-center">Control</th>
+                              <th className="border p-2 text-center">Treatment</th>
+                              <th className="border p-2 text-center">Control</th>
+                              <th className="border p-2 text-center">Treatment</th>
+                              <th className="border p-2 text-center">Control</th>
+                              <th className="border p-2 text-center">Treatment</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.analysisRequirements.comparisonGroups.map((row, idx) => (
+                              <tr key={idx} className="bg-white">
+                                <td className="border p-2 text-center">{row.group1Control || '-'}</td>
+                                <td className="border p-2 text-center">{row.group1Treatment || '-'}</td>
+                                <td className="border p-2 text-center">{row.group2Control || '-'}</td>
+                                <td className="border p-2 text-center">{row.group2Treatment || '-'}</td>
+                                <td className="border p-2 text-center">{row.group3Control || '-'}</td>
+                                <td className="border p-2 text-center">{row.group3Treatment || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                {/* 4. 客製化需求預覽 */}
+                {showCustomReq && formData.analysisRequirements.customRequirements && (
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <h5 className="font-semibold text-gray-700 mb-1">客製化需求</h5>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{formData.analysisRequirements.customRequirements}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 備註 */}
           {formData.notes && (
