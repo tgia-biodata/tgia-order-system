@@ -318,19 +318,32 @@ const TGIAOrderForm = () => {
     speciesOther: '',
     shippingMethod: '冷凍(乾冰)',
     shippingMethodOther: '',
-    notes: '',
-    signature: null,
     analysisRequirements: {
+      sampleSheet: [{
+        sampleName: '',
+        group1: '',
+        group2: '',
+        group3: '',
+        source: '',
+        note: ''
+      }],
+      comparisonGroups: [{
+        group1Control: '',
+        group1Treatment: '',
+        group2Control: '',
+        group2Treatment: '',
+        group3Control: '',
+        group3Treatment: ''
+      }],
+      customRequirements: '',
       deParams: {
         logFC: '1',
         pMethod: 'p-adjust',
         pCutoff: '0.05'
-      },
-      customRequirements: '',
-      comparisonGroups: [
-        { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
-      ]
-    }
+      }
+    },
+    notes: '',
+    signature: null
   });
   const selectedPackage = formData?.selectedPackage ?? '';
 
@@ -5807,9 +5820,9 @@ const TGIAOrderForm = () => {
                               <tr key={idx} className="bg-white">
                                 <td className="border p-2 text-center">{idx + 1}</td>
                                 <td className="border p-2">{row.sampleName}</td>
-                                <td className="border p-2">{row.libraryPrepKit}</td>
-                                <td className="border p-2">{row.indexAdapterKit}</td>
-                                <td className="border p-2">{row.setWellPosition}</td>
+                                <td className="border p-2">{row.libraryKit}</td>
+                                <td className="border p-2">{row.indexKit}</td>
+                                <td className="border p-2">{row.wellPosition}</td>
                                 <td className="border p-2">{row.index1Seq}</td>
                                 <td className="border p-2">{row.index2Seq}</td>
                                 <td className="border p-2">{row.note}</td>
@@ -5824,41 +5837,86 @@ const TGIAOrderForm = () => {
               </div>
             )}
 
-            {/* Sample (DNA/RNA/Cell/Blood) Sheet 預覽 */}
-            {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' &&
-              formData.sampleInfo.sampleSheet.some(row => row.sampleName) && (
-                <div className="mt-4">
-                  <h5 className="font-semibold text-gray-700 mb-2">Sample Sheet</h5>
+            {/* 一般 Sample Sheet 預覽 */}
+            {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && formData.sampleInfo.sampleSheet.some(row => row.sampleName) && (
+              <div className="mt-4">
+                <h5 className="font-semibold text-gray-700 mb-2">Sample Sheet</h5>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-blue-100">
+                        <th className="border p-2">序號</th>
+                        <th className="border p-2">Sample_Name</th>
+                        <th className="border p-2">Tube Label</th>
+                        <th className="border p-2">預期定序量</th>
+                        <th className="border p-2">Conc (ng/ul)</th>
+                        <th className="border p-2">Vol (uL)</th>
+                        <th className="border p-2">OD 260/280</th>
+                        <th className="border p-2">OD 260/230</th>
+                        {formData.sampleType === 'RNA' && <th className="border p-2">RQN/RIN</th>}
+                        {formData.sampleType === 'DNA' && <th className="border p-2">DQN/DIN</th>}
+                        <th className="border p-2">備註</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.sampleInfo.sampleSheet
+                        .filter(row => row.sampleName)
+                        .map((row, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="border p-2 text-center">{idx + 1}</td>
+                            <td className="border p-2">{row.sampleName}</td>
+                            <td className="border p-2">{row.tubeLabel}</td>
+                            <td className="border p-2">{row.expectedSeq}</td>
+                            <td className="border p-2">{row.conc}</td>
+                            <td className="border p-2">{row.vol}</td>
+                            <td className="border p-2">{row.ratio260280}</td>
+                            <td className="border p-2">{row.ratio260230}</td>
+                            {(formData.sampleType === 'RNA' || formData.sampleType === 'DNA') && (
+                              <td className="border p-2">{row.dqnRqn}</td>
+                            )}
+                            <td className="border p-2">{row.note}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 7. 分析需求預覽 (若有選擇分析服務) */}
+          {formData.selectedServiceCategories.includes('分析服務 (A)') && (
+            <div className="border-b pb-4">
+              <h4 className="font-semibold text-gray-700 mb-3 text-lg">📊 分析需求</h4>
+
+              {/* 樣本表預覽 */}
+              {formData.analysisRequirements.sampleSheet.some(row => row.sampleName) && (
+                <div className="mb-4">
+                  <h5 className="font-semibold text-gray-700 mb-2">樣本表</h5>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-green-100">
+                        <tr className="bg-gray-100">
                           <th className="border p-2">序號</th>
-                          <th className="border p-2">Sample_Name</th>
-                          <th className="border p-2">Tube Label</th>
-                          <th className="border p-2">預期定序量</th>
-                          <th className="border p-2">Conc (ng/ul)</th>
-                          <th className="border p-2">Vol (uL)</th>
-                          <th className="border p-2">260/280</th>
-                          <th className="border p-2">260/230</th>
-                          <th className="border p-2">DQN/RQN</th>
+                          <th className="border p-2">Sample Name</th>
+                          <th className="border p-2">分析組別一</th>
+                          <th className="border p-2">分析組別二</th>
+                          <th className="border p-2">分析組別三</th>
+                          <th className="border p-2">樣本來源</th>
                           <th className="border p-2">備註</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {formData.sampleInfo.sampleSheet
+                        {formData.analysisRequirements.sampleSheet
                           .filter(row => row.sampleName)
                           .map((row, idx) => (
                             <tr key={idx} className="bg-white">
                               <td className="border p-2 text-center">{idx + 1}</td>
                               <td className="border p-2">{row.sampleName}</td>
-                              <td className="border p-2">{row.tubeLabel}</td>
-                              <td className="border p-2">{row.expectedSeq}</td>
-                              <td className="border p-2">{row.conc}</td>
-                              <td className="border p-2">{row.vol}</td>
-                              <td className="border p-2">{row.ratio260280}</td>
-                              <td className="border p-2">{row.ratio260230}</td>
-                              <td className="border p-2">{row.dqnRqn}</td>
+                              <td className="border p-2">{row.group1}</td>
+                              <td className="border p-2">{row.group2}</td>
+                              <td className="border p-2">{row.group3}</td>
+                              <td className="border p-2">{row.source}</td>
                               <td className="border p-2">{row.note}</td>
                             </tr>
                           ))}
@@ -5868,14 +5926,69 @@ const TGIAOrderForm = () => {
                 </div>
               )}
 
-            {/* 備註 */}
-            {formData.notes && (
-              <div className="mt-4 bg-yellow-50 p-3 rounded border border-yellow-200">
-                <span className="text-gray-600 font-medium">📝 備註：</span>
-                <p className="text-gray-800 mt-1">{formData.notes}</p>
-              </div>
-            )}
-          </div>
+              {/* 比較組預覽 */}
+              {formData.analysisRequirements.comparisonGroups.length > 0 && formData.analysisRequirements.comparisonGroups.some(g => g.group1Control || g.group1Treatment) && (
+                <div className="mb-4">
+                  <h5 className="font-semibold text-gray-700 mb-2">差異表達分析比較組</h5>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse table-fixed">
+                      <colgroup>
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
+                          <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
+                          <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
+                        </tr>
+                        <tr className="bg-gray-100">
+                          <th className="border p-2 text-center">Control</th>
+                          <th className="border p-2 text-center">Treatment</th>
+                          <th className="border p-2 text-center">Control</th>
+                          <th className="border p-2 text-center">Treatment</th>
+                          <th className="border p-2 text-center">Control</th>
+                          <th className="border p-2 text-center">Treatment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.analysisRequirements.comparisonGroups.map((row, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="border p-2 text-center">{row.group1Control || '-'}</td>
+                            <td className="border p-2 text-center">{row.group1Treatment || '-'}</td>
+                            <td className="border p-2 text-center">{row.group2Control || '-'}</td>
+                            <td className="border p-2 text-center">{row.group2Treatment || '-'}</td>
+                            <td className="border p-2 text-center">{row.group3Control || '-'}</td>
+                            <td className="border p-2 text-center">{row.group3Treatment || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* 客製化需求預覽 */}
+              {formData.analysisRequirements.customRequirements && (
+                <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                  <h5 className="font-semibold text-gray-700 mb-1">客製化需求</h5>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{formData.analysisRequirements.customRequirements}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 備註 */}
+          {formData.notes && (
+            <div className="mt-4 bg-yellow-50 p-3 rounded border border-yellow-200">
+              <span className="text-gray-600 font-medium">📝 備註：</span>
+              <p className="text-gray-800 mt-1">{formData.notes}</p>
+            </div>
+          )}
 
           {/* 7. 簽名確認 */}
           {/* <div>
@@ -5979,7 +6092,7 @@ const TGIAOrderForm = () => {
             <button
               onClick={handleSubmit}
               disabled={isLocked}
-              className={`flex items - center gap - 2 px - 6 py - 3 rounded - lg font - medium transition 
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition 
               ${isLocked
                   ? 'bg-gray-400 text-white cursor-not-allowed'   // 🔒 鎖定狀態
                   : 'bg-green-600 hover:bg-green-700 text-white'
@@ -5994,7 +6107,7 @@ const TGIAOrderForm = () => {
 
         {/* 訊息提示 */}
         {message && (
-          <div className={`mt - 4 p - 4 rounded - lg flex items - center gap - 2 ${submitted || message.includes('成功')
+          <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${submitted || message.includes('成功')
             ? 'bg-green-50 border border-green-200 text-green-800'
             : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
             } `}>
