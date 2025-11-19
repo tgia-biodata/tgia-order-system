@@ -18,6 +18,7 @@ import units from './units.json'; // 直接 import
 import salesCodes from './sales_codes.json';
 import customerCodes from './customer_codes.json';
 import commonPackages from './common_packages.json';
+import supportSpecies from './support_species.json';
 
 
 const serviceOptionsByCategory = productLineData;
@@ -316,6 +317,9 @@ const TGIAOrderForm = () => {
     sampleCount: '',
     species: '物種請選擇',
     speciesOther: '',
+    speciesOtherScientificName: '',
+    speciesScientificName: '',
+    speciesReferenceGenome: '',
     shippingMethod: '冷凍(乾冰)',
     shippingMethodOther: '',
     analysisRequirements: {
@@ -4927,25 +4931,81 @@ const TGIAOrderForm = () => {
               <select
                 name="species"
                 value={formData.species}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  const selectedSpeciesName = e.target.value;
+
+                  // 找到選中的物種資料
+                  const speciesData = isRNAseqAnalysis
+                    ? supportSpecies.find(s => s.commonName === selectedSpeciesName)
+                    : null;
+
+                  setFormData(prev => ({
+                    ...prev,
+                    species: selectedSpeciesName,
+                    speciesScientificName: speciesData?.scientificName || '',
+                    speciesReferenceGenome: speciesData?.referenceGenome || ''
+                  }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
               >
                 <option>物種請選擇</option>
-                <option>Human</option>
-                <option>Mouse</option>
-                <option>Rat</option>
-                <option>其他</option>
+                {isRNAseqAnalysis ? (
+                  // RNAseq 分析服務：使用 support_species.json
+                  <>
+                    {supportSpecies.filter(s => s.forRNAseq).map((species, idx) => (
+                      <option key={idx} value={species.commonName}>
+                        {species.commonName}
+                      </option>
+                    ))}
+                    <option>其他</option>
+                  </>
+                ) : (
+                  // 一般服務：原有選項
+                  <>
+                    <option>Human</option>
+                    <option>Mouse</option>
+                    <option>Rat</option>
+                    <option>其他</option>
+                  </>
+                )}
               </select>
+
+              {/* 顯示選中物種的詳細資訊 (僅 RNAseq) */}
+              {isRNAseqAnalysis && formData.species !== '物種請選擇' && formData.species !== '其他' && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="font-medium text-gray-600">學名：</span>
+                      <span className="text-gray-800 italic">{formData.speciesScientificName}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">參考基因組：</span>
+                      <span className="text-gray-800">{formData.speciesReferenceGenome}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 🆕 當選擇「其他」時顯示輸入框 */}
               {formData.species === '其他' && (
-                <input
-                  type="text"
-                  name="speciesOther"
-                  value={formData.speciesOther}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
-                  placeholder="請輸入物種名稱（例：Zebrafish、Pig）"
-                />
+                <div className="mt-2 space-y-2">
+                  <input
+                    type="text"
+                    name="speciesOther"
+                    value={formData.speciesOther}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="請輸入物種名稱（例：Zebrafish、Pig）"
+                  />
+                  <input
+                    type="text"
+                    name="speciesOtherScientificName"
+                    value={formData.speciesOtherScientificName}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="請輸入學名（例：Danio rerio）"
+                  />
+                </div>
               )}
             </div>
 
@@ -5905,6 +5965,33 @@ const TGIAOrderForm = () => {
             return (
               <div className="border-b pb-4">
                 <h4 className="font-semibold text-gray-700 mb-3 text-lg">📊 分析需求</h4>
+
+                {/* 0. 物種資訊預覽 */}
+                <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+                  <h5 className="font-semibold text-gray-700 mb-2">物種資訊</h5>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-600">物種：</span>
+                      <span className="text-gray-800">
+                        {formData.species === '其他' ? formData.speciesOther : formData.species}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">學名：</span>
+                      <span className="text-gray-800 italic">
+                        {formData.species === '其他'
+                          ? formData.speciesOtherScientificName
+                          : formData.speciesScientificName}
+                      </span>
+                    </div>
+                    {formData.speciesReferenceGenome && (
+                      <div className="col-span-2">
+                        <span className="font-medium text-gray-600">參考基因組：</span>
+                        <span className="text-gray-800">{formData.speciesReferenceGenome}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* 1. 樣本表預覽 */}
                 {sampleSheet.some(row => row.sampleName) && (

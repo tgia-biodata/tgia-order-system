@@ -1,0 +1,74 @@
+[
+    {
+        "commonName": "Human",
+        "scientificName": "Homo sapiens",
+        "referenceGenome": "GRCh38",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Rat",
+        "scientificName": "Rattus norvegicus",
+        "referenceGenome": "Rnor_6.0",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Mouse",
+        "scientificName": "Mus musculus",
+        "referenceGenome": "GRCm38.p6",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Fruit Fly",
+        "scientificName": "Drosophila melanogaster",
+        "referenceGenome": "BDGP6",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Zebra Fish",
+        "scientificName": "Danio rerio",
+        "referenceGenome": "GRCz11",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "C. elegans",
+        "scientificName": "Caenorhabditis elegans",
+        "referenceGenome": "WBcel235",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Yeast",
+        "scientificName": "Saccharomyces cerevisiae",
+        "referenceGenome": "R64-1-1",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Arabidopsis",
+        "scientificName": "Arabidopsis thaliana",
+        "referenceGenome": "TAIR10",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Tomato",
+        "scientificName": "Solanum lycopersicum",
+        "referenceGenome": "SL3.0",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Golden Hamster",
+        "scientificName": "Mesocricetus auratus",
+        "referenceGenome": "MesAur1.0",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Japanese Medaka Fish",
+        "scientificName": "Oryzias latipes",
+        "referenceGenome": "ASM223467v1 (HdrR)",
+        "forRNAseq": true
+    },
+    {
+        "commonName": "Green Foxtail",
+        "scientificName": "Setaria viridis",
+        "referenceGenome": "v2.0",
+        "forRNAseq": true
+    }
+]
