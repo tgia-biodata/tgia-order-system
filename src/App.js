@@ -5158,9 +5158,9 @@ const TGIAOrderForm = () => {
             const selectedService = analysisItem?.services[0]?.service || '';
 
             // 判斷顯示區塊 - 使用 startsWith 精確匹配服務代碼
-            // A204: 樣本表
+            // A204: 簡化的樣本表
             // A205: 樣本表、差異表達基因分析參數、差異表達分析比較組
-            // A206: 樣本表、客製化需求
+            // A206: 簡化的樣本表、客製化需求
             // A207: 樣本表、差異表達基因分析參數、差異表達分析比較組、客製化需求
 
             const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
