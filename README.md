@@ -8,21 +8,21 @@
 
 ```mermaid
 graph TD
-    User[使用者 (User)] -->|填寫表單| Frontend[React 前端 (Frontend)]
-    Frontend -->|POST /api/orders (JSON)| Backend[Node.js 後端 (Backend)]
+    User["使用者 (User)"] -->|填寫表單| Frontend["React 前端 (Frontend)"]
+    Frontend -->|POST /api/orders (JSON)| Backend["Node.js 後端 (Backend)"]
     
     subgraph "Server Side (Backend)"
-        Backend -->|Save JSON| FS[檔案系統 (File System)]
+        Backend -->|Save JSON| FS["檔案系統 (File System)"]
         FS -->|Read JSON| Backend
-        Backend -->|Read Template| Template[Excel 模板 (templates/order_template.xlsx)]
-        Backend -->|Generate Excel| ExcelGen[Excel 產生器 (ExcelJS)]
+        Backend -->|Read Template| Template["Excel 模板 (templates/order_template.xlsx)"]
+        Backend -->|Generate Excel| ExcelGen["Excel 產生器 (ExcelJS)"]
     end
     
     Backend -->|Return orderId| Frontend
     Frontend -->|GET /api/orders/:id/export| Backend
     Backend -->|Download Excel| User
     
-    FS -.->|Stores| OrdersDir[orders/TGIA-{timestamp}.json]
+    FS -.->|Stores| OrdersDir["orders/TGIA-{timestamp}.json"]
 ```
 
 ### 核心流程
