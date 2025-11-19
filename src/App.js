@@ -1,5 +1,18 @@
 import React, { useState, useRef } from 'react';
-import { AlertCircle, Download, Send, Plus, Edit3, Check, X, RotateCcw, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  Send,
+  Plus,
+  Edit3,
+  Check,
+  X,
+  RotateCcw,
+  Upload,
+  ChevronLeft,
+  ChevronRight,
+  Trash2
+} from 'lucide-react';
 import productLineData from './product_line.json'; // 直接 import
 import units from './units.json'; // 直接 import
 import salesCodes from './sales_codes.json';
@@ -863,16 +876,11 @@ const TGIAOrderForm = () => {
     };
 
     // 用於檢測重複組合
-    const allPairs = {
-      group1: [],
-      group2: [],
-      group3: []
-    };
+    const allPairs = { analysisGroup1: [], analysisGroup2: [], analysisGroup3: [] };
 
-    // 1. 檢查每一列的 Self-comparison 和 Incomplete Pair
     comparisonGroups.forEach((row, rowIdx) => {
-      groups.forEach((groupKey, gIdx) => {
-        const groupNum = gIdx + 1;
+      groups.forEach((groupKey, index) => {
+        const groupNum = index + 1;
         const controlKey = `group${groupNum}Control`;
         const treatmentKey = `group${groupNum}Treatment`;
         const cVal = row[controlKey];
@@ -880,13 +888,13 @@ const TGIAOrderForm = () => {
 
         // 收集 Pair 用於後續檢查重複
         if (cVal && tVal) {
-          allPairs[`group${groupNum}`].push({ control: cVal, treatment: tVal, rowIdx });
+          allPairs[groupKey].push({ control: cVal, treatment: tVal, rowIdx });
         }
 
         // Priority 1: Self-comparison (Blocking)
         if (cVal && tVal && cVal === tVal) {
           if (!result.rowErrors[rowIdx]) result.rowErrors[rowIdx] = {};
-          result.rowErrors[rowIdx][`group${groupNum}`] = 'Control 不可等於 Treatment';
+          result.rowErrors[rowIdx][groupKey] = 'Control 不可等於 Treatment';
           result.isValid = false;
           return; // 優先級最高，該格不繼續檢查
         }
@@ -895,14 +903,14 @@ const TGIAOrderForm = () => {
         // 注意：Priority 2 (Duplicate) 是跨列檢查，稍後執行
         if ((cVal && !tVal) || (!cVal && tVal)) {
           if (!result.rowErrors[rowIdx]) result.rowErrors[rowIdx] = {};
-          result.rowErrors[rowIdx][`group${groupNum}`] = '需完整選擇 Control 與 Treatment';
+          result.rowErrors[rowIdx][groupKey] = '需完整選擇 Control 與 Treatment';
           result.isValid = false;
         }
       });
     });
 
     // 2. 檢查 Duplicate Pairs (Priority 2)
-    ['group1', 'group2', 'group3'].forEach(gKey => {
+    groups.forEach(gKey => {
       const pairs = allPairs[gKey];
       for (let i = 0; i < pairs.length; i++) {
         for (let j = i + 1; j < pairs.length; j++) {
@@ -5313,11 +5321,19 @@ const TGIAOrderForm = () => {
                               <col className="w-1/6" />
                             </colgroup>
                             <thead>
-                              <tr>
-                                <th colSpan="2" className={`border p-2 bg-blue-50 text-center ${analysisGroupErrors.analysisGroup1 ? 'border-red-500' : ''}`}>分析組別一</th>
-                                <th colSpan="2" className={`border p-2 bg-green-50 text-center ${analysisGroupErrors.analysisGroup2 ? 'border-red-500' : ''}`}>分析組別二</th>
-                                <th colSpan="2" className={`border p-2 bg-yellow-50 text-center ${analysisGroupErrors.analysisGroup3 ? 'border-red-500' : ''}`}>分析組別三</th>
-                              </tr>
+                              {(() => {
+                                const hasGroup1Error = analysisGroupErrors.analysisGroup1 || Object.values(analysisGroupRowErrors).some(row => row.analysisGroup1);
+                                const hasGroup2Error = analysisGroupErrors.analysisGroup2 || Object.values(analysisGroupRowErrors).some(row => row.analysisGroup2);
+                                const hasGroup3Error = analysisGroupErrors.analysisGroup3 || Object.values(analysisGroupRowErrors).some(row => row.analysisGroup3);
+
+                                return (
+                                  <tr>
+                                    <th colSpan="2" className={`border p-2 bg-blue-50 text-center ${hasGroup1Error ? 'border-red-500 border-2' : ''}`}>分析組別一</th>
+                                    <th colSpan="2" className={`border p-2 bg-green-50 text-center ${hasGroup2Error ? 'border-red-500 border-2' : ''}`}>分析組別二</th>
+                                    <th colSpan="2" className={`border p-2 bg-yellow-50 text-center ${hasGroup3Error ? 'border-red-500 border-2' : ''}`}>分析組別三</th>
+                                  </tr>
+                                );
+                              })()}
                               <tr className="bg-gray-100">
                                 <th className="border p-2 text-center">Control</th>
                                 <th className="border p-2 text-center">Treatment</th>
@@ -5345,7 +5361,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group1Options.map((opt, i) => (
@@ -5368,7 +5384,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group1Options.map((opt, i) => (
@@ -5391,7 +5407,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group2Options.map((opt, i) => (
@@ -5414,7 +5430,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group2Options.map((opt, i) => (
@@ -5437,7 +5453,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group3Options.map((opt, i) => (
@@ -5460,7 +5476,7 @@ const TGIAOrderForm = () => {
                                           }
                                         }));
                                       }}
-                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.group3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     >
                                       <option value="">請選擇</option>
                                       {group3Options.map((opt, i) => (
@@ -5472,25 +5488,7 @@ const TGIAOrderForm = () => {
                               ))}
                             </tbody>
                           </table>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormData(prev => ({
-                                ...prev,
-                                analysisRequirements: {
-                                  ...prev.analysisRequirements,
-                                  comparisonGroups: [
-                                    ...prev.analysisRequirements.comparisonGroups,
-                                    { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
-                                  ]
-                                }
-                              }));
-                            }}
-                            className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center"
-                          >
-                            <Plus size={16} className="mr-1" /> 新增比較組
-                          </button>
-                          {formData.analysisRequirements.comparisonGroups.length > 1 && (
+                          <div className="flex gap-2 mt-2">
                             <button
                               type="button"
                               onClick={() => {
@@ -5498,15 +5496,37 @@ const TGIAOrderForm = () => {
                                   ...prev,
                                   analysisRequirements: {
                                     ...prev.analysisRequirements,
-                                    comparisonGroups: prev.analysisRequirements.comparisonGroups.slice(0, -1)
+                                    comparisonGroups: [
+                                      ...prev.analysisRequirements.comparisonGroups,
+                                      { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
+                                    ]
                                   }
                                 }));
                               }}
-                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
                             >
-                              - 刪除最後一筆
+                              <Plus size={14} />
+                              新增比較組
                             </button>
-                          )}
+                            {formData.analysisRequirements.comparisonGroups.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    analysisRequirements: {
+                                      ...prev.analysisRequirements,
+                                      comparisonGroups: prev.analysisRequirements.comparisonGroups.slice(0, -1)
+                                    }
+                                  }));
+                                }}
+                                className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                              >
+                                <Trash2 size={14} />
+                                刪除最後一筆
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
