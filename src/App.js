@@ -309,9 +309,9 @@ const TGIAOrderForm = () => {
     signature: null,
     analysisRequirements: {
       deParams: {
-        logFC: '',
-        pMethod: 'p-value',
-        pCutoff: ''
+        logFC: '1',
+        pMethod: 'p-adjust',
+        pCutoff: '0.05'
       },
       customRequirements: '',
       comparisonGroups: [
@@ -1180,6 +1180,133 @@ const TGIAOrderForm = () => {
             const diff = totalSequencing - expectedSequencing;
             setMessage(`❌ 預期定序量不足，還有 ${diff.toLocaleString()} GB 未分配，請調整樣本預期定序量`);
             return false;
+          }
+        }
+
+        // 🆕 比較組驗證 (when showDEParams is true, comparison groups are shown)
+        if (isOnlyAnalysis && isRNAseqAnalysis && showDEParams) {
+          console.log('=== Comparison Groups Validation ===');
+          const comparisonErrors = {};
+          const comparisonGroups = formData.analysisRequirements.comparisonGroups;
+
+          // 獲取樣本表中使用的分析組別
+          const sampleSheet = formData.sampleInfo.sampleSheet;
+          const usedInSample = {
+            group1: new Set(sampleSheet.map(r => r.analysisGroup1).filter(v => v && v.trim())),
+            group2: new Set(sampleSheet.map(r => r.analysisGroup2).filter(v => v && v.trim())),
+            group3: new Set(sampleSheet.map(r => r.analysisGroup3).filter(v => v && v.trim()))
+          };
+
+          // 收集比較組中使用的值
+          const usedInComparison = {
+            group1: new Set(),
+            group2: new Set(),
+            group3: new Set()
+          };
+
+          // 用於檢測重複組合
+          const allPairs = {
+            group1: [],
+            group2: [],
+            group3: []
+          };
+
+          comparisonGroups.forEach((row, rowIdx) => {
+            if (!comparisonErrors[rowIdx]) comparisonErrors[rowIdx] = {};
+
+            // 檢查分析組別一
+            if (row.group1Control || row.group1Treatment) {
+              if (row.group1Control && row.group1Treatment) {
+                if (row.group1Control === row.group1Treatment) {
+                  comparisonErrors[rowIdx].group1 = 'Control 不可等於 Treatment';
+                } else {
+                  usedInComparison.group1.add(row.group1Control);
+                  usedInComparison.group1.add(row.group1Treatment);
+                  allPairs.group1.push({ control: row.group1Control, treatment: row.group1Treatment, rowIdx });
+                }
+              }
+            }
+
+            // 檢查分析組別二
+            if (row.group2Control || row.group2Treatment) {
+              if (row.group2Control && row.group2Treatment) {
+                if (row.group2Control === row.group2Treatment) {
+                  comparisonErrors[rowIdx].group2 = 'Control 不可等於 Treatment';
+                } else {
+                  usedInComparison.group2.add(row.group2Control);
+                  usedInComparison.group2.add(row.group2Treatment);
+                  allPairs.group2.push({ control: row.group2Control, treatment: row.group2Treatment, rowIdx });
+                }
+              }
+            }
+
+            // 檢查分析組別三
+            if (row.group3Control || row.group3Treatment) {
+              if (row.group3Control && row.group3Treatment) {
+                if (row.group3Control === row.group3Treatment) {
+                  comparisonErrors[rowIdx].group3 = 'Control 不可等於 Treatment';
+                } else {
+                  usedInComparison.group3.add(row.group3Control);
+                  usedInComparison.group3.add(row.group3Treatment);
+                  allPairs.group3.push({ control: row.group3Control, treatment: row.group3Treatment, rowIdx });
+                }
+              }
+            }
+          });
+
+          // 檢測重複組合（順序對調不算重複）
+          ['group1', 'group2', 'group3'].forEach(groupKey => {
+            const pairs = allPairs[groupKey];
+            for (let i = 0; i < pairs.length; i++) {
+              for (let j = i + 1; j < pairs.length; j++) {
+                const pair1 = pairs[i];
+                const pair2 = pairs[j];
+                // 檢查是否為相同組合（順序對調也算相同）
+                const isDuplicate =
+                  (pair1.control === pair2.control && pair1.treatment === pair2.treatment) ||
+                  (pair1.control === pair2.treatment && pair1.treatment === pair2.control);
+
+                if (isDuplicate) {
+                  if (!comparisonErrors[pair2.rowIdx]) comparisonErrors[pair2.rowIdx] = {};
+                  comparisonErrors[pair2.rowIdx][groupKey] = '重複的比較組合';
+                }
+              }
+            }
+          });
+
+          // 檢查樣本表中的值是否在比較組中被使用
+          if (usedInSample.group1.size > 0) {
+            const missingValues = [...usedInSample.group1].filter(v => !usedInComparison.group1.has(v));
+            if (missingValues.length > 0) {
+              console.log('Missing group1 values:', missingValues);
+              if (!errors.analysisRequirements) errors.analysisRequirements = {};
+              errors.analysisRequirements.comparisonGroup1Missing = `分析組別一 "${missingValues.join(', ')}" 未在比較組中使用`;
+            }
+          }
+
+          if (usedInSample.group2.size > 0) {
+            const missingValues = [...usedInSample.group2].filter(v => !usedInComparison.group2.has(v));
+            if (missingValues.length > 0) {
+              console.log('Missing group2 values:', missingValues);
+              if (!errors.analysisRequirements) errors.analysisRequirements = {};
+              errors.analysisRequirements.comparisonGroup2Missing = `分析組別二 "${missingValues.join(', ')}" 未在比較組中使用`;
+            }
+          }
+
+          if (usedInSample.group3.size > 0) {
+            const missingValues = [...usedInSample.group3].filter(v => !usedInComparison.group3.has(v));
+            if (missingValues.length > 0) {
+              console.log('Missing group3 values:', missingValues);
+              if (!errors.analysisRequirements) errors.analysisRequirements = {};
+              errors.analysisRequirements.comparisonGroup3Missing = `分析組別三 "${missingValues.join(', ')}" 未在比較組中使用`;
+            }
+          }
+
+          // 將比較組錯誤添加到 errors
+          if (Object.keys(comparisonErrors).some(key => Object.keys(comparisonErrors[key]).length > 0)) {
+            if (!errors.analysisRequirements) errors.analysisRequirements = {};
+            errors.analysisRequirements.comparisonErrors = comparisonErrors;
+            console.log('Comparison errors:', comparisonErrors);
           }
         }
 
@@ -4810,12 +4937,13 @@ const TGIAOrderForm = () => {
           isRNAseqAnalysis && (() => {
             // 取得分析服務項目代碼
             const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
-            const serviceCode = analysisItem?.services[0]?.service?.split(' ')[0] || '';
+            const selectedService = analysisItem?.services[0]?.service || '';
 
-            // 判斷顯示區塊
-            const showSampleTable = ['A204', 'A205', 'A206', 'A207'].some(code => serviceCode.includes(code));
-            const showDEParams = ['A205', 'A207'].some(code => serviceCode.includes(code));
-            const showCustomReq = ['A206', 'A207'].some(code => serviceCode.includes(code));
+            // 判斷顯示區塊 - 使用 startsWith 精確匹配服務代碼
+            const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
+              selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
+            const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+            const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
 
             if (!showSampleTable) return null;
 
@@ -4831,9 +4959,9 @@ const TGIAOrderForm = () => {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border p-2 text-left min-w-[150px]">Sample Name <span className="text-red-600">*</span></th>
-                          <th className="border p-2 text-left min-w-[120px]">分析組別一 <span className="text-red-600">*</span></th>
-                          <th className="border p-2 text-left min-w-[120px]">分析組別二</th>
-                          <th className="border p-2 text-left min-w-[120px]">分析組別三</th>
+                          <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一 <span className="text-red-600">*</span></th>
+                          <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別二</th>
+                          <th className="border p-2 text-left min-w-[120px] bg-yellow-50">分析組別三</th>
                           <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
                           <th className="border p-2 text-left min-w-[150px]">備註</th>
                         </tr>
@@ -4937,308 +5065,292 @@ const TGIAOrderForm = () => {
                 </div>
 
                 {/* 2. 差異表達基因分析參數 */}
-                {showDEParams && (
-                  <div className="mb-6 p-4 bg-white rounded border border-orange-200">
-                    <h4 className="font-semibold text-gray-700 mb-3">差異表達基因分析參數</h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">|logFC| <span className="text-red-600">*</span></label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={formData.analysisRequirements.deParams.logFC}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            analysisRequirements: {
-                              ...prev.analysisRequirements,
-                              deParams: { ...prev.analysisRequirements.deParams, logFC: e.target.value }
-                            }
-                          }))}
-                          className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.logFC ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                          placeholder="例如: 1.0"
-                        />
-                        {fieldErrors.analysisRequirements?.logFC && (
-                          <p className="text-xs text-red-600 mt-1">
-                            ⚠️ {fieldErrors.analysisRequirements.logFC}
-                          </p>
-                        )}
-                        {!fieldErrors.analysisRequirements?.logFC && (() => {
-                          const value = formData.analysisRequirements.deParams.logFC;
-                          if (value && !isNaN(value)) {
-                            const decimalPart = value.toString().split('.')[1];
-                            if (decimalPart && decimalPart.length > 1) {
-                              return (
-                                <p className="text-xs text-red-600 mt-1">
-                                  ⚠️ 建議使用小數一位 (例如: 1.5)
-                                </p>
-                              );
-                            }
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">P method <span className="text-red-600">*</span></label>
-                        <select
-                          value={formData.analysisRequirements.deParams.pMethod}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            analysisRequirements: {
-                              ...prev.analysisRequirements,
-                              deParams: { ...prev.analysisRequirements.deParams, pMethod: e.target.value }
-                            }
-                          }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        >
-                          <option value="p-value">p-value</option>
-                          <option value="p-adjust">p-adjust</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">P cutoff <span className="text-red-600">*</span></label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="1"
-                          value={formData.analysisRequirements.deParams.pCutoff}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            analysisRequirements: {
-                              ...prev.analysisRequirements,
-                              deParams: { ...prev.analysisRequirements.deParams, pCutoff: e.target.value }
-                            }
-                          }))}
-                          className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.pCutoff ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                          placeholder="例如: 0.05"
-                        />
-                        {fieldErrors.analysisRequirements?.pCutoff && (
-                          <p className="text-xs text-red-600 mt-1">
-                            ⚠️ {fieldErrors.analysisRequirements.pCutoff}
-                          </p>
-                        )}
-                        {!fieldErrors.analysisRequirements?.pCutoff && (() => {
-                          const value = parseFloat(formData.analysisRequirements.deParams.pCutoff);
-                          if (!isNaN(value) && (value <= 0 || value >= 1)) {
-                            return (
-                              <p className="text-xs text-red-600 mt-1">
-                                ⚠️ P cutoff 必須介於 0 和 1 之間 (0 {`<`} P {`<`} 1)
-                              </p>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 2.5 差異表達分析比較組 */}
-                {showDEParams && (() => {
-                  // 從樣本表中提取分析組別的唯一值
-                  const getUniqueValues = (columnName) => {
-                    const sampleSheet = isOnlyAnalysis ? formData.sampleInfo.sampleSheet : [];
-                    const values = sampleSheet
-                      .map(row => {
-                        if (columnName === 'analysisGroup1') return row.analysisGroup1;
-                        if (columnName === 'analysisGroup2') return row.analysisGroup2;
-                        if (columnName === 'analysisGroup3') return row.analysisGroup3;
-                        return '';
-                      })
-                      .filter(v => v && v.trim() !== '');
-                    return [...new Set(values)]; // 去重
-                  };
-
-                  const group1Options = getUniqueValues('analysisGroup1');
-                  const group2Options = getUniqueValues('analysisGroup2');
-                  const group3Options = getUniqueValues('analysisGroup3');
-
-                  return (
+                {
+                  showDEParams && (
                     <div className="mb-6 p-4 bg-white rounded border border-orange-200">
-                      <h4 className="font-semibold text-gray-700 mb-3">差異表達分析比較組</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm border-collapse bg-white">
-                          <thead>
-                            <tr>
-                              <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
-                              <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
-                              <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
-                            </tr>
-                            <tr className="bg-gray-100">
-                              <th className="border p-2 text-center min-w-[150px]">Control</th>
-                              <th className="border p-2 text-center min-w-[150px]">Treatment</th>
-                              <th className="border p-2 text-center min-w-[150px]">Control</th>
-                              <th className="border p-2 text-center min-w-[150px]">Treatment</th>
-                              <th className="border p-2 text-center min-w-[150px]">Control</th>
-                              <th className="border p-2 text-center min-w-[150px]">Treatment</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {formData.analysisRequirements.comparisonGroups.map((row, rowIdx) => (
-                              <tr key={rowIdx}>
-                                {/* 分析組別一 - Control */}
-                                <td className="border p-2">
-                                  <select
-                                    value={row.group1Control}
-                                    onChange={(e) => {
-                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
-                                      newGroups[rowIdx].group1Control = e.target.value;
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        analysisRequirements: {
-                                          ...prev.analysisRequirements,
-                                          comparisonGroups: newGroups
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                  >
-                                    <option value="">請選擇</option>
-                                    {group1Options.map((opt, i) => (
-                                      <option key={i} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                {/* 分析組別一 - Treatment */}
-                                <td className="border p-2">
-                                  <select
-                                    value={row.group1Treatment}
-                                    onChange={(e) => {
-                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
-                                      newGroups[rowIdx].group1Treatment = e.target.value;
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        analysisRequirements: {
-                                          ...prev.analysisRequirements,
-                                          comparisonGroups: newGroups
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                  >
-                                    <option value="">請選擇</option>
-                                    {group1Options.map((opt, i) => (
-                                      <option key={i} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                {/* 分析組別二 - Control */}
-                                <td className="border p-2">
-                                  <select
-                                    value={row.group2Control}
-                                    onChange={(e) => {
-                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
-                                      newGroups[rowIdx].group2Control = e.target.value;
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        analysisRequirements: {
-                                          ...prev.analysisRequirements,
-                                          comparisonGroups: newGroups
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                  >
-                                    <option value="">請選擇</option>
-                                    {group2Options.map((opt, i) => (
-                                      <option key={i} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                {/* 分析組別二 - Treatment */}
-                                <td className="border p-2">
-                                  <select
-                                    value={row.group2Treatment}
-                                    onChange={(e) => {
-                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
-                                      newGroups[rowIdx].group2Treatment = e.target.value;
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        analysisRequirements: {
-                                          ...prev.analysisRequirements,
-                                          comparisonGroups: newGroups
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                  >
-                                    <option value="">請選擇</option>
-                                    {group2Options.map((opt, i) => (
-                                      <option key={i} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                {/* 分析組別三 - Control */}
-                                <td className="border p-2">
-                                  <select
-                                    value={row.group3Control}
-                                    onChange={(e) => {
-                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
-                                      newGroups[rowIdx].group3Control = e.target.value;
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        analysisRequirements: {
-                                          ...prev.analysisRequirements,
-                                          comparisonGroups: newGroups
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                  >
-                                    <option value="">請選擇</option>
-                                    {group3Options.map((opt, i) => (
-                                      <option key={i} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                {/* 分析組別三 - Treatment */}
-                                <td className="border p-2">
-                                  <select
-                                    value={row.group3Treatment}
-                                    onChange={(e) => {
-                                      const newGroups = [...formData.analysisRequirements.comparisonGroups];
-                                      newGroups[rowIdx].group3Treatment = e.target.value;
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        analysisRequirements: {
-                                          ...prev.analysisRequirements,
-                                          comparisonGroups: newGroups
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                  >
-                                    <option value="">請選擇</option>
-                                    {group3Options.map((opt, i) => (
-                                      <option key={i} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({
+                      <h4 className="font-semibold text-gray-700 mb-3">差異表達基因分析參數</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">|logFC| <span className="text-red-600">*</span></label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.analysisRequirements.deParams.logFC}
+                            onChange={(e) => setFormData(prev => ({
                               ...prev,
                               analysisRequirements: {
                                 ...prev.analysisRequirements,
-                                comparisonGroups: [
-                                  ...prev.analysisRequirements.comparisonGroups,
-                                  { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
-                                ]
+                                deParams: { ...prev.analysisRequirements.deParams, logFC: e.target.value }
                               }
-                            }));
-                          }}
-                          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                        >
-                          + 新增比較組
-                        </button>
-                        {formData.analysisRequirements.comparisonGroups.length > 1 && (
+                            }))}
+                            className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.logFC ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                            placeholder="例如: 1.0"
+                          />
+                          {fieldErrors.analysisRequirements?.logFC && (
+                            <p className="text-xs text-red-600 mt-1">
+                              ⚠️ {fieldErrors.analysisRequirements.logFC}
+                            </p>
+                          )}
+                          {!fieldErrors.analysisRequirements?.logFC && (() => {
+                            const value = formData.analysisRequirements.deParams.logFC;
+                            if (value && !isNaN(value)) {
+                              const decimalPart = value.toString().split('.')[1];
+                              if (decimalPart && decimalPart.length > 1) {
+                                return (
+                                  <p className="text-xs text-red-600 mt-1">
+                                    ⚠️ 建議使用小數一位 (例如: 1.5)
+                                  </p>
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">P method <span className="text-red-600">*</span></label>
+                          <select
+                            value={formData.analysisRequirements.deParams.pMethod}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              analysisRequirements: {
+                                ...prev.analysisRequirements,
+                                deParams: { ...prev.analysisRequirements.deParams, pMethod: e.target.value }
+                              }
+                            }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="p-value">p-value</option>
+                            <option value="p-adjust">p-adjust</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">P cutoff <span className="text-red-600">*</span></label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value={formData.analysisRequirements.deParams.pCutoff}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              analysisRequirements: {
+                                ...prev.analysisRequirements,
+                                deParams: { ...prev.analysisRequirements.deParams, pCutoff: e.target.value }
+                              }
+                            }))}
+                            className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.pCutoff ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                            placeholder="例如: 0.05"
+                          />
+                          {fieldErrors.analysisRequirements?.pCutoff && (
+                            <p className="text-xs text-red-600 mt-1">
+                              ⚠️ {fieldErrors.analysisRequirements.pCutoff}
+                            </p>
+                          )}
+                          {!fieldErrors.analysisRequirements?.pCutoff && (() => {
+                            const value = parseFloat(formData.analysisRequirements.deParams.pCutoff);
+                            if (!isNaN(value) && (value <= 0 || value >= 1)) {
+                              return (
+                                <p className="text-xs text-red-600 mt-1">
+                                  ⚠️ P cutoff 必須介於 0 和 1 之間 (0 {`<`} P {`<`} 1)
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                {/* 2.5 差異表達分析比較組 */}
+                {
+                  showDEParams && (() => {
+                    // 從樣本表中提取分析組別的唯一值
+                    const getUniqueValues = (columnName) => {
+                      const sampleSheet = isOnlyAnalysis ? formData.sampleInfo.sampleSheet : [];
+                      const values = sampleSheet
+                        .map(row => {
+                          if (columnName === 'analysisGroup1') return row.analysisGroup1;
+                          if (columnName === 'analysisGroup2') return row.analysisGroup2;
+                          if (columnName === 'analysisGroup3') return row.analysisGroup3;
+                          return '';
+                        })
+                        .filter(v => v && v.trim() !== '');
+                      return [...new Set(values)]; // 去重
+                    };
+
+                    const group1Options = getUniqueValues('analysisGroup1');
+                    const group2Options = getUniqueValues('analysisGroup2');
+                    const group3Options = getUniqueValues('analysisGroup3');
+
+                    return (
+                      <div className="mb-6 p-4 bg-white rounded border border-orange-200">
+                        <h4 className="font-semibold text-gray-700 mb-3">差異表達分析比較組</h4>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border-collapse bg-white">
+                            <thead>
+                              <tr>
+                                <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
+                                <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
+                                <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
+                              </tr>
+                              <tr className="bg-gray-100">
+                                <th className="border p-2 text-center min-w-[150px]">Control</th>
+                                <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                                <th className="border p-2 text-center min-w-[150px]">Control</th>
+                                <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                                <th className="border p-2 text-center min-w-[150px]">Control</th>
+                                <th className="border p-2 text-center min-w-[150px]">Treatment</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {formData.analysisRequirements.comparisonGroups.map((row, rowIdx) => (
+                                <tr key={rowIdx}>
+                                  {/* 分析組別一 - Control */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group1Control}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group1Control = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group1Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別一 - Treatment */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group1Treatment}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group1Treatment = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group1Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別二 - Control */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group2Control}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group2Control = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group2Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別二 - Treatment */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group2Treatment}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group2Treatment = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group2Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別三 - Control */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group3Control}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group3Control = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group3Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別三 - Treatment */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group3Treatment}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group3Treatment = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group3Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="mt-2 flex gap-2">
                           <button
                             type="button"
                             onClick={() => {
@@ -5246,45 +5358,67 @@ const TGIAOrderForm = () => {
                                 ...prev,
                                 analysisRequirements: {
                                   ...prev.analysisRequirements,
-                                  comparisonGroups: prev.analysisRequirements.comparisonGroups.slice(0, -1)
+                                  comparisonGroups: [
+                                    ...prev.analysisRequirements.comparisonGroups,
+                                    { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
+                                  ]
                                 }
                               }));
                             }}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
                           >
-                            - 刪除最後一筆
+                            + 新增比較組
                           </button>
-                        )}
+                          {formData.analysisRequirements.comparisonGroups.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  analysisRequirements: {
+                                    ...prev.analysisRequirements,
+                                    comparisonGroups: prev.analysisRequirements.comparisonGroups.slice(0, -1)
+                                  }
+                                }));
+                              }}
+                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                            >
+                              - 刪除最後一筆
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()
+                }
 
                 {/* 3. 客製化需求 */}
-                {showCustomReq && (
-                  <div className="mb-6">
-                    <h4 className="font-semibold text-gray-700 mb-3">客製化需求</h4>
-                    <textarea
-                      value={formData.analysisRequirements.customRequirements}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        analysisRequirements: {
-                          ...prev.analysisRequirements,
-                          customRequirements: e.target.value
-                        }
-                      }))}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500"
-                      placeholder="請詳細描述您的客製化分析需求..."
-                    />
-                  </div>
-                )}
+                {
+                  showCustomReq && (
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-3">客製化需求</h4>
+                      <textarea
+                        value={formData.analysisRequirements.customRequirements}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          analysisRequirements: {
+                            ...prev.analysisRequirements,
+                            customRequirements: e.target.value
+                          }
+                        }))}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500"
+                        placeholder="請詳細描述您的客製化分析需求..."
+                      />
+                    </div>
+                  )
+                }
               </div>
             );
           })()
         }
 
-      </div>
+      </div >
     );
   };
 
