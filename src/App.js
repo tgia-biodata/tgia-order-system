@@ -1312,6 +1312,49 @@ const TGIAOrderForm = () => {
           console.log('DE Parameters validation skipped - conditions not met');
         }
 
+        // 🆕 物種驗證 (RNAseq 分析時)
+        if (isRNAseqAnalysis) {
+          if (!formData.species || formData.species === '物種請選擇') {
+            setMessage('❌ 請選擇物種');
+            return false;
+          }
+
+          // 如果選擇「其他」,則必須填寫物種名稱和學名
+          if (formData.species === '其他') {
+            if (!formData.speciesOther || !formData.speciesOther.trim()) {
+              setMessage('❌ 請填寫物種名稱');
+              return false;
+            }
+            if (!formData.speciesOtherScientificName || !formData.speciesOtherScientificName.trim()) {
+              setMessage('❌ 請填寫學名');
+              return false;
+            }
+          }
+        }
+
+        // 🆕 分析組別一驗證 (RNAseq 分析時)
+        if (isRNAseqAnalysis) {
+          const sampleSheet = formData.sampleType === 'Library'
+            ? formData.libraryInfo.sampleSheet
+            : formData.sampleInfo.sampleSheet;
+
+          for (let i = 0; i < sampleSheet.length; i++) {
+            const row = sampleSheet[i];
+            // 只檢查有 sampleName 的行
+            if (row.sampleName && row.sampleName.trim()) {
+              if (!row.analysisGroup1 || !row.analysisGroup1.trim()) {
+                if (formData.sampleType === 'Library') {
+                  if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+                  errors.sampleSheet[i].analysisGroup1 = '分析組別一不可為空';
+                } else {
+                  if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+                  errors.sampleSheet[i].analysisGroup1 = '分析組別一不可為空';
+                }
+              }
+            }
+          }
+        }
+
         // 如果有錯誤，設置錯誤狀態並返回 false
         console.log('=== Final Validation Check ===');
         console.log('errors.sampleSheet keys:', Object.keys(errors.sampleSheet).length);
@@ -1926,6 +1969,10 @@ const TGIAOrderForm = () => {
   const handleLibrarySampleSheetChange = (index, field, value) => {
     const newSampleSheet = [...formData.libraryInfo.sampleSheet];
 
+    // 🆕 在修改之前先保存舊值
+    const oldSampleName = newSampleSheet[index].sampleName;
+    const oldAnalysisGroup1 = newSampleSheet[index].analysisGroup1;
+
     // 🆕 如果是 AP 套組，阻止修改 expectedSeq
     if (field === 'expectedSeq') {
       const apConfig = getAPPackageConfig();
@@ -1936,7 +1983,18 @@ const TGIAOrderForm = () => {
       }
     }
 
-    newSampleSheet[index][field] = field === 'sampleName' ? sanitizeSampleName(value) : value;
+    const sanitizedValue = field === 'sampleName' ? sanitizeSampleName(value) : value;
+    newSampleSheet[index][field] = sanitizedValue;
+
+    // 🆕 如果修改的是 sampleName，且 analysisGroup1 為空或等於舊的 sampleName，則自動更新 analysisGroup1
+    if (field === 'sampleName' && sanitizedValue) {
+      // 只在以下情況自動更新 analysisGroup1:
+      // 1. analysisGroup1 為空
+      // 2. analysisGroup1 等於舊的 sampleName (表示之前是自動填入的，沒被手動修改過)
+      if (!oldAnalysisGroup1 || oldAnalysisGroup1 === oldSampleName) {
+        newSampleSheet[index].analysisGroup1 = sanitizedValue;
+      }
+    }
 
     setFormData(prev => ({
       ...prev,
@@ -1974,15 +2032,17 @@ const TGIAOrderForm = () => {
       }
 
       if (columns.length > startCol) {
+        const sampleName = sanitizeSampleName(columns[startCol] || '');
         newSampleSheet[targetIndex] = {
           no: targetIndex + 1,
-          sampleName: sanitizeSampleName(columns[startCol] || ''),  // 🆕 清理
+          sampleName: sampleName,  // 🆕 清理
           tubeLabel: columns[startCol + 1] || '',
           conc: columns[startCol + 2] || '',
           vol: columns[startCol + 3] || '',
           ngsConc: columns[startCol + 4] || '',
           expectedSeq: columns[startCol + 5] || '',
-          note: columns[startCol + 6] || ''
+          note: columns[startCol + 6] || '',
+          analysisGroup1: sampleName // 🆕 自動填入 analysisGroup1
         };
       }
     });
@@ -2009,7 +2069,8 @@ const TGIAOrderForm = () => {
       vol: '',
       ngsConc: '',
       expectedSeq: '',
-      note: ''
+      note: '',
+      analysisGroup1: '' // 🆕 新增欄位
     };
     const newSampleSheet = [...formData.libraryInfo.sampleSheet, newRow];
 
@@ -2192,7 +2253,8 @@ const TGIAOrderForm = () => {
                   vol: String(row[startIdx + 3] ?? ''),
                   ngsConc: String(row[startIdx + 4] ?? ''),
                   expectedSeq: String(row[startIdx + 5] ?? ''),
-                  note: String(row[startIdx + 6] ?? '')
+                  note: String(row[startIdx + 6] ?? ''),
+                  analysisGroup1: sampleName // 🆕 自動填入 analysisGroup1
                 });
               }
             }
@@ -2295,7 +2357,8 @@ const TGIAOrderForm = () => {
                 ratio260280: String(row[startIdx + 5] ?? ''),
                 ratio260230: String(row[startIdx + 6] ?? ''),
                 dqnRqn: String(row[startIdx + 7] ?? ''),
-                note: String(row[startIdx + 8] ?? '')
+                note: String(row[startIdx + 8] ?? ''),
+                analysisGroup1: sampleName // 🆕 自動填入 analysisGroup1
               });
             }
           }
@@ -2315,7 +2378,7 @@ const TGIAOrderForm = () => {
             },
             sampleCount: count
           }));
-          setMessage(`Sample Excel 檔案已匯入 (${count} 個樣本)`);
+          setMessage(`Sample Excel 檔案已匯入(${count} 個樣本)`);
         } else {
           alert('未讀取到有效資料，請確認檔案格式');
         }
@@ -2346,7 +2409,8 @@ const TGIAOrderForm = () => {
             vol: '',
             ngsConc: '',
             expectedSeq: '',
-            note: ''
+            note: '',
+            analysisGroup1: '' // 🆕 清空時也包含此欄位
           }]
         }
       }));
@@ -2395,7 +2459,8 @@ const TGIAOrderForm = () => {
             ratio260280: '',
             ratio260230: '',
             dqnRqn: '',
-            note: ''
+            note: '',
+            analysisGroup1: '' // 🆕 清空時也包含此欄位
           }]
         }
       }));
@@ -2408,6 +2473,10 @@ const TGIAOrderForm = () => {
   const handleSampleSheetChange = (index, field, value) => {
     const newSampleSheet = [...formData.sampleInfo.sampleSheet];
 
+    // 🆕 在修改之前先保存舊值
+    const oldSampleName = newSampleSheet[index].sampleName;
+    const oldAnalysisGroup1 = newSampleSheet[index].analysisGroup1;
+
     // 🆕 如果是 AP 套組，阻止修改 expectedSeq
     if (field === 'expectedSeq') {
       const apConfig = getAPPackageConfig();
@@ -2418,7 +2487,18 @@ const TGIAOrderForm = () => {
       }
     }
 
-    newSampleSheet[index][field] = field === 'sampleName' ? sanitizeSampleName(value) : value;
+    const sanitizedValue = field === 'sampleName' ? sanitizeSampleName(value) : value;
+    newSampleSheet[index][field] = sanitizedValue;
+
+    // 🆕 如果修改的是 sampleName，且 analysisGroup1 為空或等於舊的 sampleName，則自動更新 analysisGroup1
+    if (field === 'sampleName' && sanitizedValue) {
+      // 只在以下情況自動更新 analysisGroup1:
+      // 1. analysisGroup1 為空
+      // 2. analysisGroup1 等於舊的 sampleName (表示之前是自動填入的，沒被手動修改過)
+      if (!oldAnalysisGroup1 || oldAnalysisGroup1 === oldSampleName) {
+        newSampleSheet[index].analysisGroup1 = sanitizedValue;
+      }
+    }
 
     const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
 
@@ -2488,7 +2568,7 @@ const TGIAOrderForm = () => {
       sampleCount: count  // 🆕 自動更新
     }));
 
-    setMessage(`已貼上 ${rows.length} 行資料，樣本數量：${count}`);
+    setMessage(`已貼上 ${rows.length} 行資料，樣本數量：${count} `);
     setTimeout(() => setMessage(''), 2000);
   };
 
@@ -2623,7 +2703,7 @@ const TGIAOrderForm = () => {
         setSubmitted(true);
         setExportReady(true);
         setOrderId(result.orderId);
-        setMessage(`需求單已成功提交！編號：${result.orderId}`);
+        setMessage(`需求單已成功提交！編號：${result.orderId} `);
         setIsLocked(true);
         setTimeout(() => {
           setSubmitted(false);
@@ -4926,7 +5006,7 @@ const TGIAOrderForm = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                物種 <span className="text-red-600"></span>
+                物種 <span className="text-red-600">*</span>
               </label>
               <select
                 name="species"
@@ -4946,7 +5026,10 @@ const TGIAOrderForm = () => {
                     speciesReferenceGenome: speciesData?.referenceGenome || ''
                   }));
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${isRNAseqAnalysis && (!formData.species || formData.species === '物種請選擇')
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-gray-300'
+                  }`}
               >
                 <option>物種請選擇</option>
                 {isRNAseqAnalysis ? (
@@ -5103,8 +5186,8 @@ const TGIAOrderForm = () => {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border p-2 text-left min-w-[150px]">Sample Name <span className="text-red-600">*</span></th>
-                          <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一</th>
-                          <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別二</th>
+                          <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一 <span className="text-red-600">*</span></th>
+                          <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別</th>
                           <th className="border p-2 text-left min-w-[120px] bg-yellow-50">分析組別三</th>
                           <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
                           <th className="border p-2 text-left min-w-[150px]">備註</th>
@@ -5135,7 +5218,11 @@ const TGIAOrderForm = () => {
                                         }
                                       }));
                                     }}
-                                    className="w-full px-2 py-1 border rounded"
+                                    className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet?.[idx]?.analysisGroup1
+                                      ? 'border-red-500 bg-red-50'
+                                      : 'border-gray-300'
+                                      }`}
+                                    placeholder={row.sampleName || ''}
                                   />
                                 </td>
                                 <td className="border p-2">
