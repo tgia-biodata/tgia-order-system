@@ -82,20 +82,48 @@ router.get('/:orderId/export-analysis', async (req, res) => {
             if (pCutoff) sheet.cell('F120').value(parseFloat(pCutoff));
         }
 
-        // 5. 物種勾選 (B119-B130)
+        // 5. 物種勾選 (B119-B130) + 其他 (Row 131)
         if (orderData.species) {
-            const targetSpecies = orderData.species.trim().toLowerCase();
-            for (let r = 119; r <= 130; r++) {
-                const cell = sheet.cell(`B${r}`);
-                const cellValue = cell.value();
+            if (orderData.species === '其他') {
+                sheet.cell('A131').value('v');
+                if (orderData.speciesOther) sheet.cell('B131').value(orderData.speciesOther);
+                if (orderData.speciesOtherScientificName) sheet.cell('C131').value(orderData.speciesOtherScientificName);
+                if (orderData.speciesOtherReferenceGenome) sheet.cell('D131').value(orderData.speciesOtherReferenceGenome);
+            } else {
+                const targetSpecies = orderData.species.trim().toLowerCase();
+                for (let r = 119; r <= 130; r++) {
+                    const cell = sheet.cell(`B${r}`);
+                    const cellValue = cell.value();
 
-                if (cellValue && typeof cellValue === 'string') {
-                    if (cellValue.toLowerCase().includes(targetSpecies) || targetSpecies.includes(cellValue.toLowerCase())) {
-                        sheet.cell(`A${r}`).value('v');
-                        break;
+                    if (cellValue && typeof cellValue === 'string') {
+                        if (cellValue.toLowerCase().includes(targetSpecies) || targetSpecies.includes(cellValue.toLowerCase())) {
+                            sheet.cell(`A${r}`).value('v');
+                            break;
+                        }
                     }
                 }
             }
+        }
+
+        // 6. 客製化需求 (H11)
+        if (orderData.analysisRequirements && orderData.analysisRequirements.customRequirements) {
+            sheet.cell('H11').value(orderData.analysisRequirements.customRequirements);
+        }
+
+        // 7. 差異表達分析比較組 (Row 135+)
+        if (orderData.analysisRequirements && orderData.analysisRequirements.comparisonGroups) {
+            orderData.analysisRequirements.comparisonGroups.forEach((group, index) => {
+                const currentRow = 135 + index;
+                // 填寫比較組資料
+                if (group.group1Control) sheet.cell(`B${currentRow}`).value(group.group1Control);
+                if (group.group1Treatment) sheet.cell(`C${currentRow}`).value(group.group1Treatment);
+
+                if (group.group2Control) sheet.cell(`D${currentRow}`).value(group.group2Control);
+                if (group.group2Treatment) sheet.cell(`E${currentRow}`).value(group.group2Treatment);
+
+                if (group.group3Control) sheet.cell(`F${currentRow}`).value(group.group3Control);
+                if (group.group3Treatment) sheet.cell(`G${currentRow}`).value(group.group3Treatment);
+            });
         }
 
         // 輸出檔案

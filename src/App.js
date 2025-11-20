@@ -320,6 +320,7 @@ const TGIAOrderForm = () => {
     species: '物種請選擇',
     speciesOther: '',
     speciesOtherScientificName: '',
+    speciesOtherReferenceGenome: '', // 🆕 新增欄位
     speciesScientificName: '',
     speciesReferenceGenome: '',
     shippingMethod: '冷凍(乾冰)',
@@ -1043,6 +1044,29 @@ const TGIAOrderForm = () => {
         if (formData.selectedServiceCategories.length === 0) {
           setMessage('請至少勾選一個服務類別');
           return false;
+        }
+
+        // 🆕 檢查物種 (RNAseq)
+        {
+          const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+          const isRNAseqAnalysis = analysisItem?.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+
+          if (isRNAseqAnalysis) {
+            if (!formData.species || formData.species === '物種請選擇') {
+              setMessage('請選擇物種');
+              return false;
+            }
+            if (formData.species === '其他') {
+              if (!formData.speciesOther || !formData.speciesOther.trim()) {
+                setMessage('請填寫物種俗名');
+                return false;
+              }
+              if (!formData.speciesOtherScientificName || !formData.speciesOtherScientificName.trim()) {
+                setMessage('請填寫物種學名');
+                return false;
+              }
+            }
+          }
         }
         break;
       case 2:
@@ -2709,15 +2733,44 @@ const TGIAOrderForm = () => {
       group2: row.analysisGroup2 || '',
       group3: row.analysisGroup3 || '',
       source: row.sampleSource || '',
-      note: row.note || ''
+      note: row.analysisNote || ''
     }));
+
+    // 🆕 根據服務代碼過濾 analysisRequirements
+    let cleanedAnalysisRequirements = {
+      ...formData.analysisRequirements,
+      sampleSheet: analysisSampleSheet
+    };
+
+    const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+    if (analysisItem && analysisItem.services[0] && analysisItem.services[0].service) {
+      const serviceCode = analysisItem.services[0].service;
+
+      // 預設空值結構
+      const emptyDeParams = { logFC: '', pMethod: '', pCutoff: '' };
+      const emptyComparisonGroups = [];
+      const emptyCustomReq = '';
+
+      if (serviceCode.startsWith('A204')) {
+        // A204: 只需要 sampleSheet
+        cleanedAnalysisRequirements.comparisonGroups = emptyComparisonGroups;
+        cleanedAnalysisRequirements.deParams = emptyDeParams;
+        cleanedAnalysisRequirements.customRequirements = emptyCustomReq;
+      } else if (serviceCode.startsWith('A205')) {
+        // A205: 需要 sampleSheet, comparisonGroups, deParams
+        cleanedAnalysisRequirements.customRequirements = emptyCustomReq;
+      } else if (serviceCode.startsWith('A206')) {
+        // A206: 需要 sampleSheet, customRequirements
+        cleanedAnalysisRequirements.comparisonGroups = emptyComparisonGroups;
+        cleanedAnalysisRequirements.deParams = emptyDeParams;
+      } else if (serviceCode.startsWith('A207')) {
+        // A207: 全部都需要 (保留原值)
+      }
+    }
 
     const finalFormData = {
       ...formData,
-      analysisRequirements: {
-        ...formData.analysisRequirements,
-        sampleSheet: analysisSampleSheet
-      }
+      analysisRequirements: cleanedAnalysisRequirements
     };
 
     try {
@@ -5138,16 +5191,30 @@ const TGIAOrderForm = () => {
                     name="speciesOther"
                     value={formData.speciesOther}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="請填入物種俗名（例：Zebrafish）"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${formData.species === '其他' && !formData.speciesOther
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-300'
+                      }`}
+                    placeholder="物種俗名（例：Zebrafish）"
                   />
                   <input
                     type="text"
                     name="speciesOtherScientificName"
                     value={formData.speciesOtherScientificName}
                     onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${formData.species === '其他' && !formData.speciesOtherScientificName
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-300'
+                      }`}
+                    placeholder="學名（例：Homo sapiens）"
+                  />
+                  <input
+                    type="text"
+                    name="speciesOtherReferenceGenome" // 🆕 新增欄位
+                    value={formData.speciesOtherReferenceGenome}
+                    onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="請填入物種學名（例：Danio rerio）"
+                    placeholder="參考基因組名稱（非必填）（例：GRCh38）"
                   />
                 </div>
               )}
@@ -6145,6 +6212,12 @@ const TGIAOrderForm = () => {
                           : formData.speciesScientificName}
                       </span>
                     </div>
+                    {formData.species === '其他' && formData.speciesOtherReferenceGenome && (
+                      <div>
+                        <span className="font-medium text-gray-600">參考基因組：</span>
+                        <span className="text-gray-800">{formData.speciesOtherReferenceGenome}</span>
+                      </div>
+                    )}
                     {formData.speciesReferenceGenome && (
                       <div className="col-span-2">
                         <span className="font-medium text-gray-600">參考基因組：</span>
@@ -6320,22 +6393,7 @@ const TGIAOrderForm = () => {
 
 
 
-        {/* 🆕 重新填寫按鈕 (只在提交後顯示) */}
-        {submitted && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => {
-                if (window.confirm('即將捨棄所有填寫紀錄，確定要回到登入頁面嗎？')) {
-                  window.location.reload();
-                }
-              }}
-              className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
-            >
-              <RotateCcw className="w-5 h-5 mr-2" />
-              重新填寫
-            </button>
-          </div>
-        )}
+
       </div>
     </div>
   );
@@ -6419,6 +6477,23 @@ const TGIAOrderForm = () => {
           )}
         </div>
 
+        {/* 🆕 重新填寫按鈕 (移至此处，靠右，位於提交按鈕下方) */}
+        {exportReady && (
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => {
+                if (window.confirm('即將捨棄所有填寫紀錄，確定要回到登入頁面嗎？')) {
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              重新填寫
+            </button>
+          </div>
+        )}
+
 
 
         {/* 訊息提示 */}
@@ -6453,6 +6528,8 @@ const TGIAOrderForm = () => {
                 匯出分析需求單
               </button>
             )}
+
+
           </div>
         )}
       </div>
