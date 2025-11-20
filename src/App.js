@@ -2691,6 +2691,11 @@ const TGIAOrderForm = () => {
       return;
     }
 
+    // 🆕 提交前確認
+    if (!window.confirm('提交後無法編輯，請確認所有資料都正確，確認提交嗎？')) {
+      return;
+    }
+
     // 🆕 在提交前自動填充 analysisRequirements.sampleSheet
     const sourceSheet = formData.sampleType === 'Library'
       ? formData.libraryInfo.sampleSheet
@@ -2730,9 +2735,9 @@ const TGIAOrderForm = () => {
         setOrderId(result.orderId);
         setMessage(`需求單已成功提交！編號：${result.orderId} `);
         setIsLocked(true);
-        setTimeout(() => {
-          setSubmitted(false);
-        }, 5000);
+        // setTimeout(() => {
+        //   setSubmitted(false);
+        // }, 5000);
       } else {
         setMessage('提交失敗：' + result.error);
       }
@@ -6281,6 +6286,23 @@ const TGIAOrderForm = () => {
           </p>
         </div>
       </div>
+
+      {/* 🆕 重新填寫按鈕 (只在提交後顯示) */}
+      {submitted && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => {
+              if (window.confirm('即將捨棄所有填寫紀錄，確定要回到登入頁面嗎？')) {
+                window.location.reload();
+              }
+            }}
+            className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+          >
+            <RotateCcw className="w-5 h-5 mr-2" />
+            重新填寫
+          </button>
+        </div>
+      )}
     </div>
   );
 
