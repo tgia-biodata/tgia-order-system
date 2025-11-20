@@ -1322,11 +1322,11 @@ const TGIAOrderForm = () => {
           // 如果選擇「其他」,則必須填寫物種名稱和學名
           if (formData.species === '其他') {
             if (!formData.speciesOther || !formData.speciesOther.trim()) {
-              setMessage('❌ 請填寫物種名稱');
+              setMessage('❌ 請填寫物種俗名');
               return false;
             }
             if (!formData.speciesOtherScientificName || !formData.speciesOtherScientificName.trim()) {
-              setMessage('❌ 請填寫學名');
+              setMessage('❌ 請填寫物種學名');
               return false;
             }
           }
@@ -2691,13 +2691,35 @@ const TGIAOrderForm = () => {
       return;
     }
 
+    // 🆕 在提交前自動填充 analysisRequirements.sampleSheet
+    const sourceSheet = formData.sampleType === 'Library'
+      ? formData.libraryInfo.sampleSheet
+      : formData.sampleInfo.sampleSheet;
+
+    const analysisSampleSheet = sourceSheet.map(row => ({
+      sampleName: row.sampleName,
+      group1: row.analysisGroup1 || '',
+      group2: row.analysisGroup2 || '',
+      group3: row.analysisGroup3 || '',
+      source: row.sampleSource || '',
+      note: row.note || ''
+    }));
+
+    const finalFormData = {
+      ...formData,
+      analysisRequirements: {
+        ...formData.analysisRequirements,
+        sampleSheet: analysisSampleSheet
+      }
+    };
+
     try {
-      const response = await fetch('http://192.168.60.62:3001/api/orders', {
+      const response = await fetch('http://localhost:3001/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(finalFormData)
       });
 
       const result = await response.json();
@@ -2726,7 +2748,7 @@ const TGIAOrderForm = () => {
     }
 
     try {
-      const response = await fetch(`http://192.168.60.62:3001/api/orders/${orderId}/export`);
+      const response = await fetch(`http://localhost:3001/api/orders/${orderId}/export`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -5081,7 +5103,7 @@ const TGIAOrderForm = () => {
                     value={formData.speciesOther}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="請輸入物種名稱（例：Zebrafish、Pig）"
+                    placeholder="請填入物種俗名（例：Zebrafish）"
                   />
                   <input
                     type="text"
@@ -5089,7 +5111,7 @@ const TGIAOrderForm = () => {
                     value={formData.speciesOtherScientificName}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="請輸入學名（例：Danio rerio）"
+                    placeholder="請填入物種學名（例：Danio rerio）"
                   />
                 </div>
               )}
@@ -5159,9 +5181,9 @@ const TGIAOrderForm = () => {
 
             // 判斷顯示區塊 - 使用 startsWith 精確匹配服務代碼
             // A204: 簡化的樣本表
-            // A205: 樣本表、差異表達基因分析參數、差異表達分析比較組
+            // A205: 樣本表、差異表達分析閾值、差異表達分析比較組
             // A206: 簡化的樣本表、客製化需求
-            // A207: 樣本表、差異表達基因分析參數、差異表達分析比較組、客製化需求
+            // A207: 樣本表、差異表達分析閾值、差異表達分析比較組、客製化需求
 
             const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
               selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
@@ -5321,11 +5343,11 @@ const TGIAOrderForm = () => {
                   </div>
                 </div>
 
-                {/* 2. 差異表達基因分析參數 */}
+                {/* 2. 差異表達分析閾值 */}
                 {
                   showDEParams && (
                     <div className="mb-6 p-4 bg-white rounded border border-orange-200">
-                      <h4 className="font-semibold text-gray-700 mb-3">差異表達基因分析參數</h4>
+                      <h4 className="font-semibold text-gray-700 mb-3">差異表達分析閾值</h4>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">|logFC| <span className="text-red-600">*</span></label>
@@ -6139,10 +6161,10 @@ const TGIAOrderForm = () => {
                   </div>
                 )}
 
-                {/* 2. 差異表達基因分析參數預覽 */}
+                {/* 2. 差異表達分析閾值預覽 */}
                 {showDEParams && (
                   <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
-                    <h5 className="font-semibold text-gray-700 mb-2">差異表達基因分析參數</h5>
+                    <h5 className="font-semibold text-gray-700 mb-2">差異表達分析閾值</h5>
                     <div className="grid grid-cols-3 gap-3 text-sm">
                       <div>
                         <span className="font-medium text-gray-600">|logFC|: </span>
