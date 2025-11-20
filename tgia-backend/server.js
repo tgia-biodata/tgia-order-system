@@ -5,10 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const ExcelJS = require('exceljs');
+const analysisExportRouter = require('./routes/analysis-export-populate');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-app.use(bodyParser.json({ limit: '50mb' }));
 
 app.use(bodyParser.json({ limit: '50mb' }));
 
@@ -218,29 +218,6 @@ app.get('/api/orders/:orderId/export', async (req, res) => {
       sheet1.getCell(`B${rowNotes}`).value = orderData.notes;
     }
 
-    // // 簽名插入
-    // if (orderData.signature) {
-    //   try {
-    //     const base64Data = orderData.signature.replace(/^data:image\/\w+;base64,/, '');
-    //     const imageBuffer = Buffer.from(base64Data, 'base64');
-
-    //     const imageId = workbook.addImage({
-    //       buffer: imageBuffer,
-    //       extension: 'png',
-    //     });
-
-    //     sheet1.addImage(imageId, {
-    //       tl: { col: 1, row: 36 },
-    //       br: { col: 3.5, row: 39 },
-    //       editAs: 'oneCell'
-    //     });
-
-    //     console.log('✅ 簽名圖片已插入');
-    //   } catch (imgError) {
-    //     console.error('❌ 簽名圖片插入失敗:', imgError);
-    //   }
-    // }
-
     // ============ 填入對應的樣本工作表 ============
 
     if (orderData.sampleType === 'Library') {
@@ -287,14 +264,6 @@ app.get('/api/orders/:orderId/export', async (req, res) => {
 
         console.log(`✅ Library Sample Sheet 已寫入 ${orderData.libraryInfo.sampleSheet.length} 行`);
       }
-
-      // if (orderData.libraryInfo && orderData.libraryInfo.runConfig) {
-      //   const config = orderData.libraryInfo.runConfig;
-      //   if (config.sequencer) sheet3.getCell('C24').value = config.sequencer;
-      //   if (config.read1Length) sheet3.getCell('C25').value = config.read1Length;
-      //   #if (config.read2Length) sheet3.getCell('C26').value = config.read2Length;
-      //   #if (config.phiX) sheet3.getCell('C27').value = config.phiX;
-      // }
 
       // ⭐⭐⭐ Library Sample Sheet（第二個表格）⭐⭐⭐
       if (orderData.libraryInfo && orderData.libraryInfo.librarySampleSheet) {
@@ -410,6 +379,9 @@ app.get('/api/orders/:orderId/export', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Use the analysis export router
+app.use('/api/orders', analysisExportRouter);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 後端服務器運行於 http://0.0.0.0:${PORT}`);

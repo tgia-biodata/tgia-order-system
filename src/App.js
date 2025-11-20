@@ -11,7 +11,9 @@ import {
   Upload,
   ChevronLeft,
   ChevronRight,
-  Trash2
+  Trash2,
+  FileDown,
+  FileText
 } from 'lucide-react';
 import productLineData from './product_line.json'; // 直接 import
 import units from './units.json'; // 直接 import
@@ -2764,6 +2766,35 @@ const TGIAOrderForm = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       setMessage('Excel 檔案下載成功');
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage('匯出失敗：' + error.message);
+    }
+  };
+
+  // 🆕 匯出分析需求單
+  const exportAnalysisRequest = async () => {
+    if (!orderId) {
+      setMessage('請先提交訂單才能匯出');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/orders/${orderId}/export-analysis`);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || '匯出失敗');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TGIA_Analysis_Request_${orderId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setMessage('分析需求單下載成功');
       setTimeout(() => setMessage(''), 2000);
     } catch (error) {
       setMessage('匯出失敗：' + error.message);
@@ -6279,30 +6310,33 @@ const TGIAOrderForm = () => {
 
         </div>
 
+        {/* 提示訊息 */}
         <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
           <p className="text-sm text-gray-700 flex items-center gap-2">
             <AlertCircle size={18} />
             ⚠️ 請確認所有資訊無誤後再提交訂單。提交後可匯出 Excel 檔案。
           </p>
         </div>
-      </div>
 
-      {/* 🆕 重新填寫按鈕 (只在提交後顯示) */}
-      {submitted && (
-        <div className="flex justify-center mt-8">
-          <button
-            onClick={() => {
-              if (window.confirm('即將捨棄所有填寫紀錄，確定要回到登入頁面嗎？')) {
-                window.location.reload();
-              }
-            }}
-            className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
-          >
-            <RotateCcw className="w-5 h-5 mr-2" />
-            重新填寫
-          </button>
-        </div>
-      )}
+
+
+        {/* 🆕 重新填寫按鈕 (只在提交後顯示) */}
+        {submitted && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => {
+                if (window.confirm('即將捨棄所有填寫紀錄，確定要回到登入頁面嗎？')) {
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              重新填寫
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -6385,6 +6419,8 @@ const TGIAOrderForm = () => {
           )}
         </div>
 
+
+
         {/* 訊息提示 */}
         {message && (
           <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${submitted || message.includes('成功')
@@ -6398,13 +6434,26 @@ const TGIAOrderForm = () => {
 
         {/* 匯出按鈕（提交後顯示） */}
         {exportReady && (
-          <button
-            onClick={exportToExcel}
-            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition"
-          >
-            <Download size={20} />
-            匯出 Excel
-          </button>
+          <div className="flex justify-center gap-4 mt-4">
+            <button
+              onClick={exportToExcel}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition"
+            >
+              <Download size={20} />
+              匯出 Excel
+            </button>
+
+            {/* 🆕 匯出分析需求單按鈕 */}
+            {formData.selectedServiceCategories.includes('分析服務 (A)') && (
+              <button
+                onClick={exportAnalysisRequest}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                匯出分析需求單
+              </button>
+            )}
+          </div>
         )}
       </div>
 
