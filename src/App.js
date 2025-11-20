@@ -5313,6 +5313,10 @@ const TGIAOrderForm = () => {
                 {/* 1. 樣本表 */}
                 <div className="mb-6">
                   <h4 className="font-semibold text-gray-700 mb-3">樣本表</h4>
+                  {/* 🆕 提示：樣本來源 */}
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                    <p className="text-gray-700">💡 如果該樣本來自舊訂單，必須在「樣本來源」填入舊訂單之 PO</p>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse bg-white">
                       <thead>
@@ -5415,6 +5419,7 @@ const TGIAOrderForm = () => {
                                           }));
                                         }}
                                         className="w-full px-2 py-1 border rounded"
+                                        placeholder="例：TS00001"
                                       />
                                     </td>
                                   </>
