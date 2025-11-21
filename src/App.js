@@ -2090,6 +2090,13 @@ const TGIAOrderForm = () => {
 
   // 🆕 修改 addLibrarySampleSheetRow
   const addLibrarySampleSheetRow = () => {
+    // 🚫 限制最多 100 行
+    if (formData.libraryInfo.sampleSheet.length >= 100) {
+      setMessage('⚠️ 樣本表最多只能有 100 行');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
     const newRow = {
       no: formData.libraryInfo.sampleSheet.length + 1,
       sampleName: '',
@@ -2603,6 +2610,13 @@ const TGIAOrderForm = () => {
 
   // 🆕 修改 addSampleSheetRow
   const addSampleSheetRow = () => {
+    // 🚫 限制最多 100 行
+    if (formData.sampleInfo.sampleSheet.length >= 100) {
+      setMessage('⚠️ 樣本表最多只能有 100 行');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
     const apConfig = getAPPackageConfig();
     const expectedSeq = apConfig ? String(apConfig.seqPerSample) : ''; // 🔒 AP 套組自動帶入
 
@@ -5796,6 +5810,13 @@ const TGIAOrderForm = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                // 🚫 限制最多 30 行
+                                if (formData.analysisRequirements.comparisonGroups.length >= 30) {
+                                  setMessage('⚠️ 差異表達分析比較組最多只能有 30 行');
+                                  setTimeout(() => setMessage(''), 3000);
+                                  return;
+                                }
+
                                 setFormData(prev => ({
                                   ...prev,
                                   analysisRequirements: {
