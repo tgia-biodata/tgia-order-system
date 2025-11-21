@@ -1,161 +1,440 @@
 {
   "定序服務 (S)": [
-    { 
-      "value": "S-G000 二代定序 - 定序量購買", 
-      "description": "定序數據量購買，最低定序量 5 GB" 
+    {
+      "value": "S-G000 二代定序 - 定序量購買",
+      "description": "定序數據量購買，最低定序量 5 GB"
     },
-    { 
-      "value": "S-LN01 二代定序 - NoveSeq 6000, S4 包Lane 定序", 
-      "description": "NovaSeq 6000 平台，S4 flowcell，約 600~700 GBases per lane (2x150 cycles)" 
+    {
+      "value": "S-LN01 二代定序 - NoveSeq 6000, S4 包Lane 定序",
+      "description": "NovaSeq 6000 平台，S4 flowcell，約 600~700 GBases per lane (2x150 cycles)"
     },
-    { 
-      "value": "S-LN02 二代定序 - NovaSeq X Plus, 10B 包Lane 定序", 
-      "description": "NovaSeq X Plus 平台，10B flowcell，約 300~400 GBases per lane(2x150 cycles)" 
+    {
+      "value": "S-LN02 二代定序 - NovaSeq X Plus, 10B 包Lane 定序",
+      "description": "NovaSeq X Plus 平台，10B flowcell，約 300~400 GBases per lane(2x150 cycles)"
     },
-    { 
-      "value": "S-LN03 二代定序 - NovaSeq X Plus, 25B 包Lane 定序", 
-      "description": "NovaSeq X Plus 平台，10B flowcell，約 900~1000 GBases per lane(2x150 cycles)" 
+    {
+      "value": "S-LN03 二代定序 - NovaSeq X Plus, 25B 包Lane 定序",
+      "description": "NovaSeq X Plus 平台，10B flowcell，約 900~1000 GBases per lane(2x150 cycles)"
     },
-    { 
-      "value": "S-FC01 二代定序 - NoveSeq 6000, SP 包Run 定序", 
-      "description": "NovaSeq 6000 平台，SP flowcell 包片定序，約 200~250 Gb per run (2x150 cycle)" 
+    {
+      "value": "S-FC01 二代定序 - NoveSeq 6000, SP 包Run 定序",
+      "description": "NovaSeq 6000 平台，SP flowcell 包片定序，約 200~250 Gb per run (2x150 cycle)"
     },
-    { 
-      "value": "S-FC02 二代定序 - NovaSeq X Plus, 1.5B (100cycle) 包 Run 定序", 
-      "description": "NovaSeq X Plus 平台，1.5B reads，100 cycle，適合小型專案" 
+    {
+      "value": "S-FC02 二代定序 - NovaSeq X Plus, 1.5B (100cycle) 包 Run 定序",
+      "description": "NovaSeq X Plus 平台，1.5B reads，100 cycle，適合小型專案"
     },
-    { 
-      "value": "S-OS01 三代定序 - Pacbio, Sequel IIe 包片定序", 
-      "description": "PacBio Sequel IIe 平台，HiFi 長讀長定序，適合基因體組裝" 
+    {
+      "value": "S-OS01 三代定序 - Pacbio, Sequel IIe 包片定序",
+      "description": "PacBio Sequel IIe 平台，HiFi 長讀長定序，適合基因體組裝"
     },
-    { 
-      "value": "S-OS02 三代定序 - Pacbio, Revio 包片定序", 
-      "description": "PacBio Revio 平台，最新一代 HiFi 定序，高通量長讀長" 
+    {
+      "value": "S-OS02 三代定序 - Pacbio, Revio 包片定序",
+      "description": "PacBio Revio 平台，最新一代 HiFi 定序，高通量長讀長"
     },
-    { 
-      "value": "S-OS03 三代定序 - Pacbio, 16S rDNA定序", 
-      "description": "PacBio 16S rRNA 全長定序，微生物群落分析" 
+    {
+      "value": "S-OS03 三代定序 - Pacbio, 16S rDNA定序",
+      "description": "PacBio 16S rRNA 全長定序，微生物群落分析"
     }
   ],
   "QC (Q)": [
-    { "value": "Q-QC01 DNA QC", "description": "Qubit 濃度測定 + Nanodrop 純度檢測 + 膠體電泳完整性分析" },
-    { "value": "Q-QC02 DNA QC(PacBio)", "description": "PacBio 專用 DNA QC，含高分子量 DNA 完整性評估" },
-    { "value": "Q-QC03 RNA QC", "description": "Qubit 濃度測定 + Bioanalyzer RIN 值檢測" },
-    { "value": "Q-QC04 RNA QC(PacBio)", "description": "PacBio 專用 RNA QC，含 RNA 完整性評估" },
-    { "value": "Q-QC05 Library QC", "description": "Library 濃度測定 + Bioanalyzer 片段大小分析" },
-    { "value": "Q-QC06 Library QC(PacBio)", "description": "PacBio Library QC，含 SMRTbell 完整性檢測" }
+    {
+      "value": "Q-QC01 DNA QC",
+      "description": "Qubit 濃度測定 + Nanodrop 純度檢測 + 膠體電泳完整性分析"
+    },
+    {
+      "value": "Q-QC02 DNA QC(PacBio)",
+      "description": "PacBio 專用 DNA QC，含高分子量 DNA 完整性評估"
+    },
+    {
+      "value": "Q-QC03 RNA QC",
+      "description": "Qubit 濃度測定 + Bioanalyzer RIN 值檢測"
+    },
+    {
+      "value": "Q-QC04 RNA QC(PacBio)",
+      "description": "PacBio 專用 RNA QC，含 RNA 完整性評估"
+    },
+    {
+      "value": "Q-QC05 Library QC",
+      "description": "Library 濃度測定 + Bioanalyzer 片段大小分析"
+    },
+    {
+      "value": "Q-QC06 Library QC(PacBio)",
+      "description": "PacBio Library QC，含 SMRTbell 完整性檢測"
+    }
   ],
   "萃取/QC (EQ)": [
-    { "value": "Q-ED01 DNA萃取+QC - 血液、Buffy coat DNA萃取", "description": "從全血或 Buffy coat 萃取基因體 DNA，含 QC" },
-    { "value": "Q-ED02 DNA萃取+QC - 細胞 DNA萃取", "description": "從培養細胞萃取基因體 DNA，含 QC" },
-    { "value": "Q-ED03 DNA萃取+QC - 組織 DNA萃取", "description": "從新鮮或冷凍組織萃取基因體 DNA，含 QC" },
-    { "value": "Q-ED04 DNA萃取+QC - 石蠟包埋 (FFPE) DNA萃取", "description": "從 FFPE 組織萃取 DNA，含 QC" },
-    { "value": "Q-ED05 DNA萃取+QC - 血清(漿) cfDNA萃取", "description": "從血漿或血清萃取游離 DNA (cfDNA)，含 QC" },
-    { "value": "Q-ER01A RNA萃取+QC - 血液 RNA萃取 (Tempus 採血管)", "description": "從 Tempus 採血管萃取 RNA，含 QC" },
-    { "value": "Q-ER01B RNA萃取+QC - 血液 RNA萃取 (PAXgene 採血管)", "description": "從 PAXgene 採血管萃取 RNA，含 QC" },
-    { "value": "Q-ER02 RNA萃取+QC - 細胞 RNA萃取", "description": "從培養細胞萃取 total RNA，含 QC" },
-    { "value": "Q-ER03 RNA萃取+QC - 組織 RNA萃取", "description": "從新鮮或冷凍組織萃取 total RNA，含 QC" },
-    { "value": "Q-ER04 RNA萃取+QC - 石蠟包埋 (FFPE) RNA萃取", "description": "從 FFPE 組織萃取 RNA，含 QC" },
-    { "value": "Q-ER05 RNA萃取+QC - 血清(漿) cfRNA萃取", "description": "從血漿或血清萃取游離 RNA (cfRNA)，含 QC" }
+    {
+      "value": "Q-ED01 DNA萃取+QC - 血液、Buffy coat DNA萃取",
+      "description": "從全血或 Buffy coat 萃取基因體 DNA，含 QC"
+    },
+    {
+      "value": "Q-ED02 DNA萃取+QC - 細胞 DNA萃取",
+      "description": "從培養細胞萃取基因體 DNA，含 QC"
+    },
+    {
+      "value": "Q-ED03 DNA萃取+QC - 組織 DNA萃取",
+      "description": "從新鮮或冷凍組織萃取基因體 DNA，含 QC"
+    },
+    {
+      "value": "Q-ED04 DNA萃取+QC - 石蠟包埋 (FFPE) DNA萃取",
+      "description": "從 FFPE 組織萃取 DNA，含 QC"
+    },
+    {
+      "value": "Q-ED05 DNA萃取+QC - 血清(漿) cfDNA萃取",
+      "description": "從血漿或血清萃取游離 DNA (cfDNA)，含 QC"
+    },
+    {
+      "value": "Q-ER01A RNA萃取+QC - 血液 RNA萃取 (Tempus 採血管)",
+      "description": "從 Tempus 採血管萃取 RNA，含 QC"
+    },
+    {
+      "value": "Q-ER01B RNA萃取+QC - 血液 RNA萃取 (PAXgene 採血管)",
+      "description": "從 PAXgene 採血管萃取 RNA，含 QC"
+    },
+    {
+      "value": "Q-ER02 RNA萃取+QC - 細胞 RNA萃取",
+      "description": "從培養細胞萃取 total RNA，含 QC"
+    },
+    {
+      "value": "Q-ER03 RNA萃取+QC - 組織 RNA萃取",
+      "description": "從新鮮或冷凍組織萃取 total RNA，含 QC"
+    },
+    {
+      "value": "Q-ER04 RNA萃取+QC - 石蠟包埋 (FFPE) RNA萃取",
+      "description": "從 FFPE 組織萃取 RNA，含 QC"
+    },
+    {
+      "value": "Q-ER05 RNA萃取+QC - 血清(漿) cfRNA萃取",
+      "description": "從血漿或血清萃取游離 RNA (cfRNA)，含 QC"
+    }
   ],
   "建庫服務 (L)": [
-    { "value": "L-TA01 TAF 認證 - WGS, Illumina DNA PCR-Free Prep 建庫 (人類 DNA)", "description": "TAF 認證全基因體定序建庫，PCR-free 流程，人類 DNA 專用" },
-    { "value": "L-TA02 TAF 認證 - WES, Illumina DNA Prep with Enrichment, IDT v2 probe 建庫 (人類 DNA)", "description": "TAF 認證外顯子定序建庫，使用 IDT v2 probe，人類 DNA 專用" },
-    { "value": "L-WE01 WES - Roche, KAPA HyperPlus V1 建庫", "description": "KAPA HyperPlus V1 kit，適合 10ng-1μg DNA，需搭配 capture probe" },
-    { "value": "L-WE02 WES - Roche, KAPA HyperPlus V1 + mit 建庫", "description": "KAPA HyperPlus V1 + 粒線體富集，適合低覆蓋度需求" },
-    { "value": "L-WE03 WES - Roche, KAPA HyperPlus V2 建庫", "description": "KAPA HyperPlus V2 kit，適合 10ng-1μg DNA" },
-    { "value": "L-WE04 WES - Roche, KAPA EvoPlus V2 建庫", "description": "KAPA EvoPlus V2 kit，酶促建庫，適合降解 DNA" },
-    { "value": "L-WE05 WES - Roche, KAPA EvoPlus V2 + mit 建庫", "description": "KAPA EvoPlus V2 + 粒線體富集" },
-    { "value": "L-WE06 WES - QIAGEN, QIAseq Human Exome Kit 建庫", "description": "QIAGEN 外顯子建庫套組，含 capture probe" },
-    { "value": "L-WG01 WGS - Illumina, Illumina DNA PCR-Free Prep 建庫", "description": "PCR-free 建庫，適合高品質 DNA，減少 GC bias" },
-    { "value": "L-WG02 WMS - Illumina, Illumina DNA Prep 建庫", "description": "Tagmentation 快速建庫，適合一般基因體定序" },
-    { "value": "L-WG03 WGS - Roche, KAPA EvoPrep 建庫", "description": "KAPA EvoPrep 酶促建庫，適合降解或 FFPE DNA" },
-    { "value": "L-WG04 WGBS - IDT, xGen Methyl-Seq Library Prep 建庫", "description": "全基因體甲基化定序建庫，含 bisulfite 轉換" },
-    { "value": "L-TS01 TSO500 - Illumina, TSO500 HT 建庫", "description": "TruSight Oncology 500 High-Throughput，腫瘤 523 基因 panel" },
-    { "value": "L-TS02 內部使用 - Illumina, TSO500 HT plus Velsera", "description": "TSO500 + Velsera 分析平台（內部使用）" },
-    { "value": "L-TS03 TSO500 - Illumina, TSO500 ctDNA v2 建庫", "description": "TSO500 ctDNA v2，循環腫瘤 DNA 檢測" },
-    { "value": "L-TS04 內部使用 - Illumina, TSO500 ctDNA v2 plus Velsera", "description": "TSO500 ctDNA + Velsera（內部使用）" },
-    { "value": "L-DN01 內部使用 - IDT, xGen ssDNA & Low-Input DNA Library Prep 建庫", "description": "單股 DNA 或低量 DNA 建庫（內部使用）" },
-    { "value": "L-RN01 RNAseq - Illumina, Illumina Stranded mRNA 建庫", "description": "polyA 富集 mRNA 定序，保留鏈方向資訊" },
-    { "value": "L-RN02 RNAseq - Illumina, Illumina Stranded Total RNA Prep, Ligation with Ribo-Zero Plus 建庫", "description": "Total RNA 去除 rRNA，含非編碼 RNA" },
-    { "value": "L-RN03 RNAseq - Illumina, Illumina RNA Prep with Enrichment 建庫", "description": "RNA 建庫含富集功能，可搭配 panel" },
-    { "value": "L-RN04 RNAseq - Roche, KAPA mRNA HyperPrep 建庫", "description": "KAPA mRNA 建庫，polyA 富集" },
-    { "value": "L-RN05 RNAseq - Roche, KAPA RNA HyperPrep Kits with RiboErase (HMR) 建庫", "description": "KAPA RNA 去除 rRNA (Human/Mouse/Rat)" },
-    { "value": "L-RN06 RNAseq - Takara, SMART-Seq Stranded 建庫", "description": "SMART-Seq 全長轉錄本建庫，適合單細胞" },
-    { "value": "L-RN07 RNAseq - Takara, SMART-Seq mRNA LP 建庫", "description": "SMART-Seq 低投入量 mRNA 建庫" },
-    { "value": "L-RN08 RNAseq - QIAGEN, QIAseq miRNA Library Kit 建庫", "description": "miRNA 定序建庫，小片段 RNA" },
-    { "value": "L-PB01 PacBio - Human WGS with Standard Analysis", "description": "PacBio 人類全基因體定序，含標準分析" },
-    { "value": "L-PB02 PacBio - Human WGS with 5mC", "description": "PacBio 人類全基因體 + 5mC 甲基化檢測" },
-    { "value": "L-PB03 PacBio - De Novo Assembly-HiFi Reads (unknown)", "description": "PacBio HiFi 從頭組裝，物種未知" },
-    { "value": "L-PB04 PacBio - De Novo Assembly-HiFi Reads (unknown), with 5mC", "description": "PacBio HiFi 組裝 + 5mC 檢測" },
-    { "value": "L-PB05 PacBio - De Novo Assembly-CCS Reads (Microbial), 20 plex", "description": "PacBio 微生物組裝，20 樣本混合" },
-    { "value": "L-PB06 PacBio - PacBio CCS, Full Length 16S rRNA 8K Reads, 96 plex", "description": "PacBio 16S 全長定序，96 樣本混合" },
-    { "value": "L-OS01 10x - GEM-X Universal 5' Gene Expression v3, 4 samples", "description": "10x Genomics 5' 單細胞基因表現，4 樣本" },
-    { "value": "L-OS02 10x - GEM-X Flex Gene Expression Mouse", "description": "10x Flex 固定組織單細胞定序，小鼠" },
-    { "value": "L-OS03 10x - GEM-X Flex Gene Expression Human", "description": "10x Flex 固定組織單細胞定序，人類" },
-    { "value": "L-OS04 10x - Visium HD, Mouse Transcriptome, 6.5 mm", "description": "10x Visium HD 空間轉錄體，小鼠，6.5mm 捕獲區" },
-    { "value": "L-OS05 10x - Visium HD, Human Transcriptome, 6.5 mm", "description": "10x Visium HD 空間轉錄體，人類，6.5mm 捕獲區" }
+    {
+      "value": "L-TA01 TAF 認證 - WGS, Illumina DNA PCR-Free Prep 建庫 (人類 DNA)",
+      "description": "TAF 認證全基因體定序建庫，PCR-free 流程，人類 DNA 專用"
+    },
+    {
+      "value": "L-TA02 TAF 認證 - WES, Illumina DNA Prep with Enrichment, IDT v2 probe 建庫 (人類 DNA)",
+      "description": "TAF 認證外顯子定序建庫，使用 IDT v2 probe，人類 DNA 專用"
+    },
+    {
+      "value": "L-WE01 WES - Roche, KAPA HyperPlus V1 建庫",
+      "description": "KAPA HyperPlus V1 kit，適合 10ng-1μg DNA，需搭配 capture probe"
+    },
+    {
+      "value": "L-WE02 WES - Roche, KAPA HyperPlus V1 + mit 建庫",
+      "description": "KAPA HyperPlus V1 + 粒線體富集，適合低覆蓋度需求"
+    },
+    {
+      "value": "L-WE03 WES - Roche, KAPA HyperPlus V2 建庫",
+      "description": "KAPA HyperPlus V2 kit，適合 10ng-1μg DNA"
+    },
+    {
+      "value": "L-WE04 WES - Roche, KAPA EvoPlus V2 建庫",
+      "description": "KAPA EvoPlus V2 kit，酶促建庫，適合降解 DNA"
+    },
+    {
+      "value": "L-WE05 WES - Roche, KAPA EvoPlus V2 + mit 建庫",
+      "description": "KAPA EvoPlus V2 + 粒線體富集"
+    },
+    {
+      "value": "L-WE06 WES - QIAGEN, QIAseq Human Exome Kit 建庫",
+      "description": "QIAGEN 外顯子建庫套組，含 capture probe"
+    },
+    {
+      "value": "L-WG01 WGS - Illumina, Illumina DNA PCR-Free Prep 建庫",
+      "description": "PCR-free 建庫，適合高品質 DNA，減少 GC bias"
+    },
+    {
+      "value": "L-WG02 WMS - Illumina, Illumina DNA Prep 建庫",
+      "description": "Tagmentation 快速建庫，適合一般基因體定序"
+    },
+    {
+      "value": "L-WG03 WGS - Roche, KAPA EvoPrep 建庫",
+      "description": "KAPA EvoPrep 酶促建庫，適合降解或 FFPE DNA"
+    },
+    {
+      "value": "L-WG04 WGBS - IDT, xGen Methyl-Seq Library Prep 建庫",
+      "description": "全基因體甲基化定序建庫，含 bisulfite 轉換"
+    },
+    {
+      "value": "L-TS01 TSO500 - Illumina, TSO500 HT 建庫",
+      "description": "TruSight Oncology 500 High-Throughput，腫瘤 523 基因 panel"
+    },
+    {
+      "value": "L-TS02 內部使用 - Illumina, TSO500 HT plus Velsera",
+      "description": "TSO500 + Velsera 分析平台（內部使用）"
+    },
+    {
+      "value": "L-TS03 TSO500 - Illumina, TSO500 ctDNA v2 建庫",
+      "description": "TSO500 ctDNA v2，循環腫瘤 DNA 檢測"
+    },
+    {
+      "value": "L-TS04 內部使用 - Illumina, TSO500 ctDNA v2 plus Velsera",
+      "description": "TSO500 ctDNA + Velsera（內部使用）"
+    },
+    {
+      "value": "L-DN01 內部使用 - IDT, xGen ssDNA & Low-Input DNA Library Prep 建庫",
+      "description": "單股 DNA 或低量 DNA 建庫（內部使用）"
+    },
+    {
+      "value": "L-RN01 RNAseq - Illumina, Illumina Stranded mRNA 建庫",
+      "description": "polyA 富集 mRNA 定序，保留鏈方向資訊"
+    },
+    {
+      "value": "L-RN02 RNAseq - Illumina, Illumina Stranded Total RNA Prep, Ligation with Ribo-Zero Plus 建庫",
+      "description": "Total RNA 去除 rRNA，含非編碼 RNA"
+    },
+    {
+      "value": "L-RN03 RNAseq - Illumina, Illumina RNA Prep with Enrichment 建庫",
+      "description": "RNA 建庫含富集功能，可搭配 panel"
+    },
+    {
+      "value": "L-RN04 RNAseq - Roche, KAPA mRNA HyperPrep 建庫",
+      "description": "KAPA mRNA 建庫，polyA 富集"
+    },
+    {
+      "value": "L-RN05 RNAseq - Roche, KAPA RNA HyperPrep Kits with RiboErase (HMR) 建庫",
+      "description": "KAPA RNA 去除 rRNA (Human/Mouse/Rat)"
+    },
+    {
+      "value": "L-RN06 RNAseq - Takara, SMART-Seq Stranded 建庫",
+      "description": "SMART-Seq 全長轉錄本建庫，適合單細胞"
+    },
+    {
+      "value": "L-RN07 RNAseq - Takara, SMART-Seq mRNA LP 建庫",
+      "description": "SMART-Seq 低投入量 mRNA 建庫"
+    },
+    {
+      "value": "L-RN08 RNAseq - QIAGEN, QIAseq miRNA Library Kit 建庫",
+      "description": "miRNA 定序建庫，小片段 RNA"
+    },
+    {
+      "value": "L-PB01 PacBio - Human WGS with Standard Analysis",
+      "description": "PacBio 人類全基因體定序，含標準分析"
+    },
+    {
+      "value": "L-PB02 PacBio - Human WGS with 5mC",
+      "description": "PacBio 人類全基因體 + 5mC 甲基化檢測"
+    },
+    {
+      "value": "L-PB03 PacBio - De Novo Assembly-HiFi Reads (unknown)",
+      "description": "PacBio HiFi 從頭組裝，物種未知"
+    },
+    {
+      "value": "L-PB04 PacBio - De Novo Assembly-HiFi Reads (unknown), with 5mC",
+      "description": "PacBio HiFi 組裝 + 5mC 檢測"
+    },
+    {
+      "value": "L-PB05 PacBio - De Novo Assembly-CCS Reads (Microbial), 20 plex",
+      "description": "PacBio 微生物組裝，20 樣本混合"
+    },
+    {
+      "value": "L-PB06 PacBio - PacBio CCS, Full Length 16S rRNA 8K Reads, 96 plex",
+      "description": "PacBio 16S 全長定序，96 樣本混合"
+    },
+    {
+      "value": "L-OS01 10x - GEM-X Universal 5' Gene Expression v3, 4 samples",
+      "description": "10x Genomics 5' 單細胞基因表現，4 樣本"
+    },
+    {
+      "value": "L-OS02 10x - GEM-X Flex Gene Expression Mouse",
+      "description": "10x Flex 固定組織單細胞定序，小鼠"
+    },
+    {
+      "value": "L-OS03 10x - GEM-X Flex Gene Expression Human",
+      "description": "10x Flex 固定組織單細胞定序，人類"
+    },
+    {
+      "value": "L-OS04 10x - Visium HD, Mouse Transcriptome, 6.5 mm",
+      "description": "10x Visium HD 空間轉錄體，小鼠，6.5mm 捕獲區"
+    },
+    {
+      "value": "L-OS05 10x - Visium HD, Human Transcriptome, 6.5 mm",
+      "description": "10x Visium HD 空間轉錄體，人類，6.5mm 捕獲區"
+    }
   ],
   "分析服務 (A)": [
-    { "value": "A100 1st - BCL", "description": "定序儀下機原始資料(BCL)" },
-    { "value": "A101 1st - Fastq", "description": "FASTQ檔案"},
-    { "value": "A102 1st - UMI Tagged FASTQ", "description": "產出 Fastq 原始檔案" },
-    { "value": "A201 2nd - DRAGEN-Germline", "description": "DRAGEN 加速運算平台，體細胞變異分析" },
-    { "value": "A202 2nd - DRAGEN-Somatic", "description": "DRAGEN 加速運算平台，體細胞突變分析" },
-    { "value": "A203 2nd - RNAseq-Basic", "description": "基礎 RNA-seq 分析。產出 QC 報表、序列比對結果與量化結果（TPM/FPKM）。詳細交付結果可以參閱「RNAseq 範例報告」。" },
-    { "value": "A204 2nd - RNAseq-Advanced", "description": "進階 RNA-seq 分析。產出 QC 報表、序列比對結果與量化結果（TPM/FPKM）以外，會進行 R 分析與視覺化，包含差異表達分析、ORA（GO/KEGG）分析、GSEA（GO/KEGG）分析，與 PPI 分析。最終產出 HTML 報告方便客戶閱讀。詳細交付結果可以參閱「RNAseq 範例報告」。" },
-    { "value": "A251 2nd - RNAseq-Basic-Customized", "description": "客製化 RNA-seq 分析：RNAseq-Basic pipeline 加上客製化處理（支援可執行的非模式物種，也可進行更彈性化的 R 分析來找出差異表達基因，包含「子集分析」、「雙軌分析」、「Pairwise 多重比較法」，與「多時序分析（LRT）」。此外也支援圖片修改與富集分析的「自定義資料集」。詳細交付結果可以參閱「RNAseq 範例報告」。）" },
-    { "value": "A252 2nd - RNAseq-Advanced-Customized", "description": "客製化 RNA-seq 分析：RNAseq-Advanced pipeline 加上客製化處理（支援可執行的非模式物種，也可進行更彈性化的 R 分析來找出差異表達基因，包含「子集分析」、「雙軌分析」、「Pairwise 多重比較法」，與「多時序分析（LRT）」。此外也支援圖片修改與富集分析的「自定義資料集」。詳細交付結果可以參閱「RNAseq 範例報告」。）" },
-    { "value": "A206 2nd - TSO500-Tissue", "description": "TSO500 組織樣本分析，" },
-    { "value": "A207 2nd - TSO500-ctDNA", "description": "TSO500 ctDNA 樣本分析，" },
-    { "value": "A208 2nd - miRNA", "description": "miRNA 定序分析：比對、定量、目標基因預測" },
-    { "value": "A209 2nd - ChIPseq", "description": "ChIP-Seq 分析：peak calling、motif 分析" },
-    { "value": "A210 2nd - CellRanger", "description": "10x Genomics Cell Ranger 標準分析" },
-    { "value": "A211 2nd - SpaceRanger", "description": "10x Visium Space Ranger 空間分析" },
-    { "value": "A212 2nd - scRNAseq-Standard", "description": "單細胞 RNA-Seq 標準分析" },
-    { "value": "A213 2nd - CeleScope", "description": "CeleScope 單細胞分析平台" },
-    { "value": "A214 2nd - PacBio-16S", "description": "PacBio 16S 微生物群落分析" },
-    { "value": "A215 2nd - PacBio-HumanWGS", "description": "PacBio 人類全基因體分析" },
-    { "value": "A216 2nd - Transcriptome-de-novo", "description": "轉錄體從頭組裝分析" },
-    { "value": "A217 2nd - ServiceHour", "description": "客製化分析服務（以小時計費）" },
-    { "value": "A218 2nd - DRAGEN-Germline-Server", "description": "DRAGEN Server 體細胞變異分析" },
-    { "value": "A219 2nd - DRAGEN-Somatic-Server", "description": "DRAGEN Server 體細胞突變分析" },
-    { "value": "A302 3rd - Geneyx-Report", "description": "Geneyx 變異解讀報告" },
-    { "value": "A303 3rd - Geneyx-Report&Annotation-Germline", "description": "Geneyx 報告 + 體細胞變異註解" },
-    { "value": "A304 3rd - Geneyx-Account", "description": "Geneyx 平台使用帳號" },
-    { "value": "A305 3rd - Annotation-Germline", "description": "體細胞變異註解" },
-    { "value": "A306 3rd - Annotation-Germline&JointCalling", "description": "體細胞變異註解 + Joint Calling" },
-    { "value": "A307 3rd - Annotation-Somatic", "description": "體細胞突變註解" },
-    { "value": "A308 3rd - Annotation-Somatic-PCGR", "description": "體細胞突變 PCGR 註解（癌症相關）" },
-    { "value": "A309 3rd - Annotation-Somatic-PCGR-maftools", "description": "PCGR + maftools 進階癌症註解" },
-    { "value": "A310 3rd - OGM-Geneyx-Report", "description": "OGM (光學基因體圖譜) Geneyx 報告" },
-    { "value": "A311 3rd - OGM-Geneyx-Account", "description": "OGM Geneyx 平台使用帳號" },
-    { "value": "A312 3rd - ICI-Report", "description": "ICI (免疫檢查點抑制劑) 療效預測報告" },
-    { "value": "A313 3rd - ICI-Account", "description": "ICI 分析平台使用帳號" },
-    { "value": "A314 3rd - MagicBison", "description": "MagicBison 整合分析平台" },
-    { "value": "A315 3rd - SangerReport", "description": "Sanger 定序分析報告" },
-    { "value": "A316 3rd - HLAtyping", "description": "HLA 分型分析" }
+    {
+      "value": "A100 1st - BCL",
+      "description": "定序儀下機原始資料(BCL)"
+    },
+    {
+      "value": "A101 1st - Fastq",
+      "description": "FASTQ檔案"
+    },
+    {
+      "value": "A102 1st - UMI Tagged FASTQ",
+      "description": "產出 Fastq 原始檔案"
+    },
+    {
+      "value": "A201 2nd - DRAGEN-Germline",
+      "description": "DRAGEN 加速運算平台，體細胞變異分析"
+    },
+    {
+      "value": "A202 2nd - DRAGEN-Somatic",
+      "description": "DRAGEN 加速運算平台，體細胞突變分析"
+    },
+    {
+      "value": "A204 2nd - RNAseq-Basic",
+      "description": "基礎 RNA-seq 分析。產出 QC 報表、序列比對結果與量化結果（TPM/FPKM）。詳細交付結果可以參閱「RNAseq 範例報告」。"
+    },
+    {
+      "value": "A205 2nd - RNAseq-Advanced",
+      "description": "進階 RNA-seq 分析。產出 QC 報表、序列比對結果與量化結果（TPM/FPKM）以外，會進行 R 分析與視覺化，包含差異表達分析、ORA（GO/KEGG）分析、GSEA（GO/KEGG）分析，與 PPI 分析。最終產出 HTML 報告方便客戶閱讀。詳細交付結果可以參閱「RNAseq 範例報告」。"
+    },
+    {
+      "value": "A206 2nd - RNAseq-Basic-Customized",
+      "description": "客製化 RNA-seq 分析：RNAseq-Basic pipeline 加上客製化處理（支援可執行的非模式物種，也可進行更彈性化的 R 分析來找出差異表達基因，包含「子集分析」、「雙軌分析」、「Pairwise 多重比較法」，與「多時序分析（LRT）」。此外也支援圖片修改與富集分析的「自定義資料集」。詳細交付結果可以參閱「RNAseq 範例報告」。）"
+    },
+    {
+      "value": "A207 2nd - RNAseq-Advanced-Customized",
+      "description": "客製化 RNA-seq 分析：RNAseq-Advanced pipeline 加上客製化處理（支援可執行的非模式物種，也可進行更彈性化的 R 分析來找出差異表達基因，包含「子集分析」、「雙軌分析」、「Pairwise 多重比較法」，與「多時序分析（LRT）」。此外也支援圖片修改與富集分析的「自定義資料集」。詳細交付結果可以參閱「RNAseq 範例報告」。）"
+    },
+    {
+      "value": "A206 2nd - TSO500-Tissue",
+      "description": "TSO500 組織樣本分析，"
+    },
+    {
+      "value": "A207 2nd - TSO500-ctDNA",
+      "description": "TSO500 ctDNA 樣本分析，"
+    },
+    {
+      "value": "A208 2nd - miRNA",
+      "description": "miRNA 定序分析：比對、定量、目標基因預測"
+    },
+    {
+      "value": "A209 2nd - ChIPseq",
+      "description": "ChIP-Seq 分析：peak calling、motif 分析"
+    },
+    {
+      "value": "A210 2nd - CellRanger",
+      "description": "10x Genomics Cell Ranger 標準分析"
+    },
+    {
+      "value": "A211 2nd - SpaceRanger",
+      "description": "10x Visium Space Ranger 空間分析"
+    },
+    {
+      "value": "A212 2nd - scRNAseq-Standard",
+      "description": "單細胞 RNA-Seq 標準分析"
+    },
+    {
+      "value": "A213 2nd - CeleScope",
+      "description": "CeleScope 單細胞分析平台"
+    },
+    {
+      "value": "A214 2nd - PacBio-16S",
+      "description": "PacBio 16S 微生物群落分析"
+    },
+    {
+      "value": "A215 2nd - PacBio-HumanWGS",
+      "description": "PacBio 人類全基因體分析"
+    },
+    {
+      "value": "A216 2nd - Transcriptome-de-novo",
+      "description": "轉錄體從頭組裝分析"
+    },
+    {
+      "value": "A217 2nd - ServiceHour",
+      "description": "客製化分析服務（以小時計費）"
+    },
+    {
+      "value": "A218 2nd - DRAGEN-Germline-Server",
+      "description": "DRAGEN Server 體細胞變異分析"
+    },
+    {
+      "value": "A219 2nd - DRAGEN-Somatic-Server",
+      "description": "DRAGEN Server 體細胞突變分析"
+    },
+    {
+      "value": "A302 3rd - Geneyx-Report",
+      "description": "Geneyx 變異解讀報告"
+    },
+    {
+      "value": "A303 3rd - Geneyx-Report&Annotation-Germline",
+      "description": "Geneyx 報告 + 體細胞變異註解"
+    },
+    {
+      "value": "A304 3rd - Geneyx-Account",
+      "description": "Geneyx 平台使用帳號"
+    },
+    {
+      "value": "A305 3rd - Annotation-Germline",
+      "description": "體細胞變異註解"
+    },
+    {
+      "value": "A306 3rd - Annotation-Germline&JointCalling",
+      "description": "體細胞變異註解 + Joint Calling"
+    },
+    {
+      "value": "A307 3rd - Annotation-Somatic",
+      "description": "體細胞突變註解"
+    },
+    {
+      "value": "A308 3rd - Annotation-Somatic-PCGR",
+      "description": "體細胞突變 PCGR 註解（癌症相關）"
+    },
+    {
+      "value": "A309 3rd - Annotation-Somatic-PCGR-maftools",
+      "description": "PCGR + maftools 進階癌症註解"
+    },
+    {
+      "value": "A310 3rd - OGM-Geneyx-Report",
+      "description": "OGM (光學基因體圖譜) Geneyx 報告"
+    },
+    {
+      "value": "A311 3rd - OGM-Geneyx-Account",
+      "description": "OGM Geneyx 平台使用帳號"
+    },
+    {
+      "value": "A312 3rd - ICI-Report",
+      "description": "ICI (免疫檢查點抑制劑) 療效預測報告"
+    },
+    {
+      "value": "A313 3rd - ICI-Account",
+      "description": "ICI 分析平台使用帳號"
+    },
+    {
+      "value": "A314 3rd - MagicBison",
+      "description": "MagicBison 整合分析平台"
+    },
+    {
+      "value": "A315 3rd - SangerReport",
+      "description": "Sanger 定序分析報告"
+    },
+    {
+      "value": "A316 3rd - HLAtyping",
+      "description": "HLA 分型分析"
+    }
   ],
   "套組產品 (AP)": [
-    { "value": "台基安WGS", 
+    {
+      "value": "台基安WGS",
       "description": "台積安WGS服務內容包含：\n1) DNA萃取+QC\n2) Illumina, Illumina DNA PCR-Free Prep 建庫\n3) 二代定序 (90GB)\n4) Dragen Germline分析\n5) Geneyx 臨床報告  ",
       "binding": {
-        "sampleType": "DNA",  
-        "seqAmountGb": 90     
+        "sampleType": "DNA",
+        "seqAmountGb": 90
       }
     },
-    { "value": "台基安WES", 
+    {
+      "value": "台基安WES",
       "description": "台積安WGS服務內容包含：\n1) DNA萃取+QC\n2) Roche, KAPA HyperPlus V1 + mit 建庫\n3) 二代定序 (9GB)\n4) Dragen Germline分析\n5) Geneyx 臨床報告  ",
       "binding": {
-        "sampleType": "DNA",  
-        "seqAmountGb": 9     
+        "sampleType": "DNA",
+        "seqAmountGb": 9
       }
     },
-    { "value": "Bulk RNA-Seq Expression Profiling(含萃取)", 
+    {
+      "value": "Bulk RNA-Seq Expression Profiling(含萃取)",
       "description": "Bulk RNA-Seq Expression Profiling 內容包含：\n1) RNA萃取+QC\n2) Illumina, Illumina Stranded mRNA 建庫\n3) 二代定序 (6GB,20M Reads per sample)\n4) 進階 RNA-seq 分析\n 標準分析物種 (Human/Mus musculus/Rat/Zebrafish/Drosophilla) ",
       "binding": {
-        "sampleType": ["RNA", "Tissue"],    
-        "seqAmountGb": 6     
+        "sampleType": [
+          "RNA",
+          "Tissue"
+        ],
+        "seqAmountGb": 6
       }
     }
   ]

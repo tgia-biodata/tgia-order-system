@@ -1,10 +1,26 @@
 import React, { useState, useRef } from 'react';
-import { AlertCircle, Download, Send, Plus, Edit3, Check, X, RotateCcw, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  Send,
+  Plus,
+  Edit3,
+  Check,
+  X,
+  RotateCcw,
+  Upload,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  FileDown,
+  FileText
+} from 'lucide-react';
 import productLineData from './product_line.json'; // 直接 import
-import units   from './units.json'; // 直接 import
+import units from './units.json'; // 直接 import
 import salesCodes from './sales_codes.json';
 import customerCodes from './customer_codes.json';
-import commonPackages from './common_packages.json';  
+import commonPackages from './common_packages.json';
+import supportSpecies from './support_species.json';
 
 
 const serviceOptionsByCategory = productLineData;
@@ -27,13 +43,13 @@ const safeCommonPackages = (() => {
 // Email 驗證
 const validateEmail = (emailString) => {
   if (!emailString || !emailString.trim()) return false;
-  
+
 
   const emails = emailString.split(/[,;]/).map(e => e.trim()).filter(e => e);
-  
+
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   return emails.length > 0 && emails.every(email => emailRegex.test(email));
 };
 // 步驟指示器 => 網頁上方那排
@@ -52,30 +68,28 @@ const StepIndicator = ({ currentStep, steps, isLocked }) => {
               <div className="flex flex-col items-center flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition
-                    ${
-                      isLocked
-                        ? lockedClass
-                        : isCompleted
+                    ${isLocked
+                      ? lockedClass
+                      : isCompleted
                         ? 'bg-green-500 text-white'
                         : isCurrent
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-500'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-500'
                     }`}
                 >
                   {isLocked
                     ? <Check size={20} /> // 鎖定時全部顯示勾勾
                     : isCompleted
-                    ? <Check size={20} />
-                    : index + 1}
+                      ? <Check size={20} />
+                      : index + 1}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center ${
-                    isLocked
-                      ? 'text-blue-600 font-semibold'
-                      : isCurrent
+                  className={`text-xs mt-2 text-center ${isLocked
+                    ? 'text-blue-600 font-semibold'
+                    : isCurrent
                       ? 'text-blue-600 font-semibold'
                       : 'text-gray-500'
-                  }`}
+                    }`}
                 >
                   {step}
                 </p>
@@ -84,10 +98,9 @@ const StepIndicator = ({ currentStep, steps, isLocked }) => {
               {index < steps.length - 1 && (
                 <div
                   className={`h-1 flex-1 mx-2 transition
-                    ${
-                      isLocked
-                        ? 'bg-blue-500'
-                        : index < currentStep
+                    ${isLocked
+                      ? 'bg-blue-500'
+                      : index < currentStep
                         ? 'bg-green-500'
                         : 'bg-gray-200'
                     }`}
@@ -110,7 +123,7 @@ const TGIAOrderForm = () => {
   const [filteredOrgs, setFilteredOrgs] = useState([]);
   const [exportReady, setExportReady] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  
+
   // 表單小工具
   // Sample_Name 清理函數：只保留英文、數字、_、,、-
   const sanitizeSampleName = (name) => {
@@ -122,7 +135,7 @@ const TGIAOrderForm = () => {
     if (!formData.selectedServiceCategories.includes('套組產品 (AP)')) {
       return null;
     }
-    
+
     const apItem = formData.serviceItems.find(item => item.category === '套組產品 (AP)');
     if (apItem && apItem.services[0].service) {
       const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
@@ -141,14 +154,15 @@ const TGIAOrderForm = () => {
     isOpen: false,
     searchTerm: '',
     activeIndex: null,
-    targetKey: '' 
-  });  
+    targetKey: ''
+  });
   // 在 useState 區域加入錯誤追蹤
   const [fieldErrors, setFieldErrors] = useState({
     sampleSheet: {}, // { rowIndex: { fieldName: errorMessage } }
     librarySampleSheet: {},
-    libraryDetailSheet: {}
-  });  
+    libraryDetailSheet: {},
+    analysisRequirements: {} // { logFC: error, pCutoff: error }
+  });
 
   // 拖放上傳 Excel 檔案功能
   const [isDragging, setIsDragging] = useState(false);
@@ -168,17 +182,17 @@ const TGIAOrderForm = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
-      
+
       // 檢查檔案類型
       if (!file.name.match(/\.(xlsx|xls)$/i)) {
         alert('請上傳 Excel 檔案 (.xlsx 或 .xls)');
         return;
       }
-      
+
       // 建立一個假的 event 物件來呼叫現有的 handleExcelUpload
       const fakeEvent = {
         target: {
@@ -186,20 +200,20 @@ const TGIAOrderForm = () => {
           value: ''
         }
       };
-      
+
       handleExcelUpload(fakeEvent);
     }
-  };  
+  };
   // const steps = ['基本驗證', '基本資訊', '委託內容', '送測樣品', '簽名確認', '預覽提交'];
   const steps = ['基本驗證', '基本資訊', '委託內容', '送測樣品', '預覽提交'];
-  
+
   // const organizationOptions = [
   //   '國立陽明交通大學',
   //   '國立台灣大學',
   //   '國立成功大學'
   // ];
   const organizationOptions = units.organizations || units;
-  
+
   const salesPersonOptions = [
     '請選擇業務人員',
     '施秉宏',
@@ -209,7 +223,7 @@ const TGIAOrderForm = () => {
 
   const [formData, setFormData] = useState({
     salesCode: '',
-    customerCode: '',    
+    customerCode: '',
     salesPerson: '',
     organization: '',
     principalInvestigator: '',
@@ -255,7 +269,11 @@ const TGIAOrderForm = () => {
         vol: '',
         ngsConc: '',
         expectedSeq: '',
-        note: ''
+        note: '',
+        analysisGroup1: '',
+        analysisGroup2: '',
+        analysisGroup3: '',
+        sampleSource: ''
       }],
       runConfig: {
         sequencer: '不限',
@@ -288,7 +306,12 @@ const TGIAOrderForm = () => {
         ratio260280: '',
         ratio260230: '',
         dqnRqn: '',
-        note: ''
+        dqnRqn: '',
+        note: '',
+        analysisGroup1: '',
+        analysisGroup2: '',
+        analysisGroup3: '',
+        sampleSource: ''
       }]
     },
     preservationMethod: 'Nuclease-free H2O',
@@ -296,19 +319,72 @@ const TGIAOrderForm = () => {
     sampleCount: '',
     species: '物種請選擇',
     speciesOther: '',
+    speciesOtherScientificName: '',
+    speciesOtherReferenceGenome: '', // 🆕 新增欄位
+    speciesScientificName: '',
+    speciesReferenceGenome: '',
     shippingMethod: '冷凍(乾冰)',
     shippingMethodOther: '',
+    analysisRequirements: {
+      sampleSheet: [{
+        sampleName: '',
+        group1: '',
+        group2: '',
+        group3: '',
+        source: '',
+        note: ''
+      }],
+      comparisonGroups: [{
+        group1Control: '',
+        group1Treatment: '',
+        group2Control: '',
+        group2Treatment: '',
+        group3Control: '',
+        group3Treatment: ''
+      }],
+      customRequirements: '',
+      deParams: {
+        logFC: '1',
+        pMethod: 'p-adjust',
+        pCutoff: '0.05'
+      }
+    },
     notes: '',
     signature: null
   });
   const selectedPackage = formData?.selectedPackage ?? '';
 
+  // 🆕 監聽服務項目變更，強制設定保存與寄送方式
+  React.useEffect(() => {
+    const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+    if (isOnlyAnalysis) {
+      const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+      if (analysisItem) {
+        const isRNAseq = analysisItem.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+        if (isRNAseq) {
+          setFormData(prev => {
+            // 只有當值不是 '其他' 時才更新，避免無窮迴圈
+            if (prev.preservationMethod !== '其他' || prev.shippingMethod !== '其他' || prev.sampleType !== '其他') {
+              return {
+                ...prev,
+                preservationMethod: '其他',
+                shippingMethod: '其他',
+                sampleType: '其他'
+              };
+            }
+            return prev;
+          });
+        }
+      }
+    }
+  }, [formData.selectedServiceCategories, formData.serviceItems]);
 
-  
-// // 🆕 新增：客戶代碼驗證狀態
-// const [customerCodeInput, setCustomerCodeInput] = useState('');
-// const [customerCodeStatus, setCustomerCodeStatus] = useState('idle'); // 'idle' | 'checking' | 'valid' | 'invalid'
-// const [customerInfo, setCustomerInfo] = useState(null);
+
+
+  // // 🆕 新增：客戶代碼驗證狀態
+  // const [customerCodeInput, setCustomerCodeInput] = useState('');
+  // const [customerCodeStatus, setCustomerCodeStatus] = useState('idle'); // 'idle' | 'checking' | 'valid' | 'invalid'
+  // const [customerInfo, setCustomerInfo] = useState(null);
 
 
 
@@ -317,7 +393,7 @@ const TGIAOrderForm = () => {
   const handleSalesCodeChange = (code) => {
     const upperCode = code.toUpperCase();
     const foundSales = salesCodes.find(s => s.code === upperCode);
-    
+
     setFormData(prev => ({
       ...prev,
       salesCode: upperCode,
@@ -332,10 +408,10 @@ const TGIAOrderForm = () => {
       setMessage('');
       return;
     }
-    
+
     const upperCode = code.toUpperCase();
     const foundCustomer = customerCodes.find(c => c.code === upperCode);
-    
+
     if (foundCustomer) {
       setFormData(prev => ({
         ...prev,
@@ -363,7 +439,7 @@ const TGIAOrderForm = () => {
   //   setCustomerCodeInput('');
   //   setCustomerCodeStatus('idle');
   //   setCustomerInfo(null);
-    
+
   //   setFormData(prev => ({
   //     ...prev,
   //     customerCode: '',
@@ -372,7 +448,7 @@ const TGIAOrderForm = () => {
   //     // principalInvestigator: '',
   //     // ...
   //   }));
-    
+
   //   setMessage('已清除客戶代碼');
   //   setTimeout(() => setMessage(''), 2000);
   // };
@@ -385,7 +461,7 @@ const TGIAOrderForm = () => {
   // };
 
 
-  
+
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
   const [orderId, setOrderId] = useState('');
@@ -395,93 +471,93 @@ const TGIAOrderForm = () => {
   const [pasteData, setPasteData] = useState('');
   const excelUploadRef = useRef(null);
 
-// 🆕 調整組合倍數（在 STEP2 使用）
-// 🆕 調整組合倍數（排除不受影響的服務）
-const handlePackageMultiplierChange = (newMultiplier) => {
-  if (!formData.selectedPackage) return;
-  
-  const multiplier = Math.max(1, parseInt(newMultiplier) || 1);
-  
-  // 🆕 使用 safeCommonPackages
-  const selectedPkg = safeCommonPackages.find(pkg => pkg.id === formData.selectedPackage);
-  if (!selectedPkg) {
-    setMessage('❌ 找不到此組合配置');
-    return;
-  }
-  
-  // 更新所有服務的數量
-  const updatedServiceItems = formData.serviceItems.map(item => {
-    // 找出該類別在組合中的預設服務
-    const defaultServicesForCategory = (selectedPkg.defaultServices || []).filter(
-      svc => svc.category === item.category
-    );
-    
-    // 更新服務數量
-    const updatedServices = item.services.map(service => {
-      const defaultService = defaultServicesForCategory.find(
-        ds => ds.service === service.service
+  // 🆕 調整組合倍數（在 STEP2 使用）
+  // 🆕 調整組合倍數（排除不受影響的服務）
+  const handlePackageMultiplierChange = (newMultiplier) => {
+    if (!formData.selectedPackage) return;
+
+    const multiplier = Math.max(1, parseInt(newMultiplier) || 1);
+
+    // 🆕 使用 safeCommonPackages
+    const selectedPkg = safeCommonPackages.find(pkg => pkg.id === formData.selectedPackage);
+    if (!selectedPkg) {
+      setMessage('❌ 找不到此組合配置');
+      return;
+    }
+
+    // 更新所有服務的數量
+    const updatedServiceItems = formData.serviceItems.map(item => {
+      // 找出該類別在組合中的預設服務
+      const defaultServicesForCategory = (selectedPkg.defaultServices || []).filter(
+        svc => svc.category === item.category
       );
-      
-      if (defaultService) {
-        // 檢查是否排除倍數影響
-        if (defaultService.excludeFromMultiplier) {
-          return {
-            ...service,
-            quantity: String(parseInt(defaultService.defaultQuantity) || 1)
-          };
+
+      // 更新服務數量
+      const updatedServices = item.services.map(service => {
+        const defaultService = defaultServicesForCategory.find(
+          ds => ds.service === service.service
+        );
+
+        if (defaultService) {
+          // 檢查是否排除倍數影響
+          if (defaultService.excludeFromMultiplier) {
+            return {
+              ...service,
+              quantity: String(parseInt(defaultService.defaultQuantity) || 1)
+            };
+          } else {
+            return {
+              ...service,
+              quantity: String((parseInt(defaultService.defaultQuantity) || 1) * multiplier)
+            };
+          }
         } else {
-          return {
-            ...service,
-            quantity: String((parseInt(defaultService.defaultQuantity) || 1) * multiplier)
-          };
+          return service;
         }
-      } else {
-        return service;
-      }
+      });
+
+      return {
+        ...item,
+        services: updatedServices
+      };
     });
-    
-    return {
-      ...item,
-      services: updatedServices
-    };
-  });
-  
-  setFormData(prev => ({
-    ...prev,
-    packageMultiplier: multiplier,
-    serviceItems: updatedServiceItems
-  }));
-  
-  setMessage(`✅ 已調整組合倍數為 ${multiplier} 倍`);
-  setTimeout(() => setMessage(''), 2000);
-};
+
+    setFormData(prev => ({
+      ...prev,
+      packageMultiplier: multiplier,
+      serviceItems: updatedServiceItems
+    }));
+
+    setMessage(`✅ 已調整組合倍數為 ${multiplier} 倍`);
+    setTimeout(() => setMessage(''), 2000);
+  };
 
   // 🆕 加入離開頁面警示
   React.useEffect(() => {
     // 只在表單有資料且尚未提交時警告
-    const hasData = 
-      formData.organization || 
-      formData.contactPerson || 
+    const hasData =
+      formData.organization ||
+      formData.contactPerson ||
       formData.email ||
       formData.selectedServiceCategories.length > 0;
-    
+
     const handleBeforeUnload = (e) => {
       // 如果已提交或沒有資料，不顯示警告
       if (submitted || !hasData) {
         return;
       }
-      
+
       // 標準的離開確認訊息
       e.preventDefault();
       e.returnValue = ''; // Chrome 需要設定 returnValue
-      
+
       // 某些瀏覽器會顯示這個訊息，但大多數現代瀏覽器會顯示預設訊息
       return '您尚未完成訂單提交，離開此頁面將會遺失所有填寫的資料。確定要離開嗎？';
     };
-    
+
     // 註冊事件監聽器
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     // 清除事件監聽器
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -500,7 +576,7 @@ const handlePackageMultiplierChange = (newMultiplier) => {
 
   // 1️⃣ 在開頭加入定序量對照表
   const sequencingDataMap = {
-    'S-G000 二代定序 - 定序量購買':1, // 每 GB 計算
+    'S-G000 二代定序 - 定序量購買': 1, // 每 GB 計算
     'S-LN01 二代定序 - NoveSeq 6000, S4 包Lane 定序': 600,
     'S-LN02 二代定序 - NovaSeq X Plus, 10B 包Lane 定序': 350,
     'S-LN03 二代定序 - NovaSeq X Plus, 25B 包Lane 定序': 1000,
@@ -508,109 +584,109 @@ const handlePackageMultiplierChange = (newMultiplier) => {
     'S-FC02 二代定序 - NovaSeq X Plus, 1.5B (100cycle) 包 Run 定序': 0 // 需要補充
   };
 
-// 2️⃣ 加入計算函數
-// 2️⃣ 加入計算函數
-// 2️⃣ 加入計算函數（支援 AP 套組和一般服務）
-const calculateTotalSequencing = () => {
-  let total = 0;
-  
-  // 🆕 加入防禦性檢查
-  if (!formData.serviceItems || !Array.isArray(formData.serviceItems)) {
-    return 0;
-  }
-  
-  formData.serviceItems.forEach(item => {
-    // === 情況1：一般定序服務 ===
-    if (item.category === '定序服務 (S)') {
-      if (!item.services || !Array.isArray(item.services)) {
-        return;
-      }
-      
-      item.services.forEach(service => {
-        const gbPerUnit = sequencingDataMap[service.service] || 0;
-        const quantity = parseInt(service.quantity) || 0;
-        total += gbPerUnit * quantity;
-      });
+  // 2️⃣ 加入計算函數
+  // 2️⃣ 加入計算函數
+  // 2️⃣ 加入計算函數（支援 AP 套組和一般服務）
+  const calculateTotalSequencing = () => {
+    let total = 0;
+
+    // 🆕 加入防禦性檢查
+    if (!formData.serviceItems || !Array.isArray(formData.serviceItems)) {
+      return 0;
     }
-    
-    // === 情況2：AP 套組產品 ===
-    if (item.category === '套組產品 (AP)') {
-      if (!item.services || !Array.isArray(item.services)) {
-        return;
-      }
-      
-      item.services.forEach(service => {
-        if (!service.service) return;
-        
-        // 從 serviceOptionsByCategory 找到該 AP 產品的配置
-        const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
-        const apConfig = apOptions.find(opt => opt.value === service.service);
-        
-        if (apConfig?.binding?.seqAmountGb) {
-          const quantity = parseInt(service.quantity) || 0;
-          total += apConfig.binding.seqAmountGb * quantity;
+
+    formData.serviceItems.forEach(item => {
+      // === 情況1：一般定序服務 ===
+      if (item.category === '定序服務 (S)') {
+        if (!item.services || !Array.isArray(item.services)) {
+          return;
         }
+
+        item.services.forEach(service => {
+          const gbPerUnit = sequencingDataMap[service.service] || 0;
+          const quantity = parseInt(service.quantity) || 0;
+          total += gbPerUnit * quantity;
+        });
+      }
+
+      // === 情況2：AP 套組產品 ===
+      if (item.category === '套組產品 (AP)') {
+        if (!item.services || !Array.isArray(item.services)) {
+          return;
+        }
+
+        item.services.forEach(service => {
+          if (!service.service) return;
+
+          // 從 serviceOptionsByCategory 找到該 AP 產品的配置
+          const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
+          const apConfig = apOptions.find(opt => opt.value === service.service);
+
+          if (apConfig?.binding?.seqAmountGb) {
+            const quantity = parseInt(service.quantity) || 0;
+            total += apConfig.binding.seqAmountGb * quantity;
+          }
+        });
+      }
+    });
+
+    return total;
+  };
+
+  const calculateExpectedSequencing = () => {
+    let total = 0;
+
+    if (formData.sampleType === 'Library') {
+      // 🆕 加入檢查
+      if (!formData.libraryInfo?.sampleSheet || !Array.isArray(formData.libraryInfo.sampleSheet)) {
+        return 0;
+      }
+
+      formData.libraryInfo.sampleSheet.forEach(row => {
+        const expectedSeq = parseFloat(row.expectedSeq) || 0;
+        total += expectedSeq;
+      });
+    } else if (formData.sampleType !== '無送樣') {
+      // 🆕 加入檢查
+      if (!formData.sampleInfo?.sampleSheet || !Array.isArray(formData.sampleInfo.sampleSheet)) {
+        return 0;
+      }
+
+      formData.sampleInfo.sampleSheet.forEach(row => {
+        const expectedSeq = parseFloat(row.expectedSeq) || 0;
+        total += expectedSeq;
       });
     }
-  });
-  
-  return total;
-};
 
-const calculateExpectedSequencing = () => {
-  let total = 0;
-  
-  if (formData.sampleType === 'Library') {
-    // 🆕 加入檢查
-    if (!formData.libraryInfo?.sampleSheet || !Array.isArray(formData.libraryInfo.sampleSheet)) {
-      return 0;
+    return total;
+  };
+
+  // 🆕 1️⃣ 加入計算樣本數量的函數（放在 calculateExpectedSequencing 下方）
+  const calculateSampleCount = () => {
+    let count = 0;
+
+    if (formData.sampleType === 'Library') {
+      // Library: 計算第一個 Sample Sheet 中有 sampleName 的行數
+      count = formData.libraryInfo.sampleSheet.filter(row =>
+        row.sampleName && row.sampleName.trim() !== ''
+      ).length;
+    } else if (formData.sampleType !== '無送樣') {
+      // Sample (DNA/RNA/Cell/Blood): 計算 sampleSheet 中有 sampleName 的行數
+      count = formData.sampleInfo.sampleSheet.filter(row =>
+        row.sampleName && row.sampleName.trim() !== ''
+      ).length;
     }
-    
-    formData.libraryInfo.sampleSheet.forEach(row => {
-      const expectedSeq = parseFloat(row.expectedSeq) || 0;
-      total += expectedSeq;
-    });
-  } else if (formData.sampleType !== '無送樣') {
-    // 🆕 加入檢查
-    if (!formData.sampleInfo?.sampleSheet || !Array.isArray(formData.sampleInfo.sampleSheet)) {
-      return 0;
-    }
-    
-    formData.sampleInfo.sampleSheet.forEach(row => {
-      const expectedSeq = parseFloat(row.expectedSeq) || 0;
-      total += expectedSeq;
-    });
-  }
-  
-  return total;
-};
 
-// 🆕 1️⃣ 加入計算樣本數量的函數（放在 calculateExpectedSequencing 下方）
-const calculateSampleCount = () => {
-  let count = 0;
-  
-  if (formData.sampleType === 'Library') {
-    // Library: 計算第一個 Sample Sheet 中有 sampleName 的行數
-    count = formData.libraryInfo.sampleSheet.filter(row => 
-      row.sampleName && row.sampleName.trim() !== ''
-    ).length;
-  } else if (formData.sampleType !== '無送樣') {
-    // Sample (DNA/RNA/Cell/Blood): 計算 sampleSheet 中有 sampleName 的行數
-    count = formData.sampleInfo.sampleSheet.filter(row => 
-      row.sampleName && row.sampleName.trim() !== ''
-    ).length;
-  }
-  
-  return count;
-};
+    return count;
+  };
 
-// 🆕 2️⃣ 加入自動更新樣本數量的函數
-const autoFillSampleCount = () => {
-  const count = calculateSampleCount();
-  setFormData(prev => ({ ...prev, sampleCount: count }));
-  setMessage(`已自動計算：${count} 個樣本`);
-  setTimeout(() => setMessage(''), 2000);
-};
+  // 🆕 2️⃣ 加入自動更新樣本數量的函數
+  const autoFillSampleCount = () => {
+    const count = calculateSampleCount();
+    setFormData(prev => ({ ...prev, sampleCount: count }));
+    setMessage(`已自動計算：${count} 個樣本`);
+    setTimeout(() => setMessage(''), 2000);
+  };
   const serviceCategories = [
     '請選擇服務類別',
     'QC (Q)',
@@ -625,200 +701,337 @@ const autoFillSampleCount = () => {
 
 
 
-// 🆕 處理常用組合選擇
-// 處理常用組合選擇
-const handlePackageSelect = (packageId) => {
-  if (!packageId) {
-    setFormData(prev => ({ 
-      ...prev, 
-      selectedPackage: ''
-    }));
-    return;
-  }
-  
-  // 🆕 使用 safeCommonPackages
-  const selectedPkg = safeCommonPackages.find(pkg => pkg.id === packageId);
-  if (!selectedPkg) {
-    setMessage('❌ 找不到此組合');
-    return;
-  }
-  
-  // 自動勾選相關的服務類別
-  setFormData(prev => ({
-    ...prev,
-    selectedPackage: packageId,
-    selectedServiceCategories: selectedPkg.categories || [],
-    sampleType: selectedPkg.recommendedSampleType || prev.sampleType
-  }));
-  
-  setMessage(`✅ 已選擇組合：${selectedPkg.name}，請進入下一步填寫品項數量`);
-  setTimeout(() => setMessage(''), 3000);
-};
+  // 🆕 處理常用組合選擇
+  // 處理常用組合選擇
+  const handlePackageSelect = (packageId) => {
+    if (!packageId) {
+      setFormData(prev => ({
+        ...prev,
+        selectedPackage: ''
+      }));
+      return;
+    }
 
+    // 🆕 使用 safeCommonPackages
+    const selectedPkg = safeCommonPackages.find(pkg => pkg.id === packageId);
+    if (!selectedPkg) {
+      setMessage('❌ 找不到此組合');
+      return;
+    }
 
-// 🆕 一鍵清除所有服務類別
-const handleClearAllCategories = () => {
-  if (formData.selectedServiceCategories.length === 0) {
-    setMessage('目前沒有選擇任何服務類別');
-    setTimeout(() => setMessage(''), 2000);
-    return;
-  }
-  
-  if (window.confirm('確定要清除所有已選擇的服務類別嗎？')) {
+    // 自動勾選相關的服務類別
     setFormData(prev => ({
       ...prev,
-      selectedServiceCategories: [],
-      serviceItems: [{
-        category: '請選擇服務類別',
-        services: [{ service: '', quantity: '' }],
-        libraryType: '無',
-        seqSpec: ''
-      }]
+      selectedPackage: packageId,
+      selectedServiceCategories: selectedPkg.categories || [],
+      sampleType: selectedPkg.recommendedSampleType || prev.sampleType
     }));
-    setMessage('✅ 已清除所有服務類別');
-    setTimeout(() => setMessage(''), 2000);
-  }
-};
+
+    setMessage(`✅ 已選擇組合：${selectedPkg.name}，請進入下一步填寫品項數量`);
+    setTimeout(() => setMessage(''), 3000);
+  };
 
 
-// 🆕 清除常用組合選擇
-const handleClearPackage = () => {
-  if (window.confirm('清除常用組合將會重置所有服務類別選擇，確定要繼續嗎？')) {
-    setFormData(prev => ({
-      ...prev,
-      selectedPackage: '',
-      selectedServiceCategories: [],
-      serviceItems: [{
-        category: '請選擇服務類別',
-        services: [{ service: '', quantity: '' }],
-        libraryType: '無',
-        seqSpec: ''
-      }]
-    }));
-    setMessage('已清除常用組合選擇');
-    setTimeout(() => setMessage(''), 2000);
-  }
-};
+  // 🆕 一鍵清除所有服務類別
+  const handleClearAllCategories = () => {
+    if (formData.selectedServiceCategories.length === 0) {
+      setMessage('目前沒有選擇任何服務類別');
+      setTimeout(() => setMessage(''), 2000);
+      return;
+    }
+
+    if (window.confirm('確定要清除所有已選擇的服務類別嗎？')) {
+      setFormData(prev => ({
+        ...prev,
+        selectedServiceCategories: [],
+        serviceItems: [{
+          category: '請選擇服務類別',
+          services: [{ service: '', quantity: '' }],
+          libraryType: '無',
+          seqSpec: ''
+        }]
+      }));
+      setMessage('✅ 已清除所有服務類別');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  };
+
+
+  // 🆕 清除常用組合選擇
+  const handleClearPackage = () => {
+    if (window.confirm('清除常用組合將會重置所有服務類別選擇，確定要繼續嗎？')) {
+      setFormData(prev => ({
+        ...prev,
+        selectedPackage: '',
+        selectedServiceCategories: [],
+        serviceItems: [{
+          category: '請選擇服務類別',
+          services: [{ service: '', quantity: '' }],
+          libraryType: '無',
+          seqSpec: ''
+        }]
+      }));
+      setMessage('已清除常用組合選擇');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  };
 
 
   // 處理服務類別勾選
-// 處理服務類別勾選（含聯動邏輯）
-// 處理服務類別勾選（含聯動和鎖定邏輯）
-const handleServiceCategoryToggle = (categoryValue) => {
-  setFormData(prev => {
-    let newSelected = [...prev.selectedServiceCategories];
-    
-    if (newSelected.includes(categoryValue)) {
-      // === 取消勾選 ===
-      
-      // 🔒 阻擋規則 1：如果勾選了「萃取/QC (EQ)」，不能取消「建庫服務 (L)」或「定序服務 (S)」
-      if (categoryValue === '建庫服務 (L)' || categoryValue === '定序服務 (S)') {
-        if (newSelected.includes('萃取/QC (EQ)')) {
-          setMessage('❌ 已勾選「萃取/QC」，無法取消此項目');
-          setTimeout(() => setMessage(''), 2000);
-          return prev;
-        }
-      }
-      
-      // 🔒 阻擋規則 2：如果勾選了「建庫服務 (L)」，不能取消「定序服務 (S)」
-      if (categoryValue === '定序服務 (S)') {
-        if (newSelected.includes('建庫服務 (L)')) {
-          setMessage('❌ 已勾選「建庫服務」，無法取消定序服務');
-          setTimeout(() => setMessage(''), 2000);
-          return prev;
-        }
-      }
-      
-      // 允許取消
-      newSelected = newSelected.filter(c => c !== categoryValue);
-      
-    } else {
-      // === 勾選 ===
-      
-      // 🆕 AP 互斥邏輯：選擇 AP 時清除其他所有類別
-      if (categoryValue === '套組產品 (AP)') {
-        newSelected = ['套組產品 (AP)'];
-        setMessage('✓ 已選擇套組產品，其他服務類別已自動清除');
-        setTimeout(() => setMessage(''), 2500);
-        // 🆕 清空常用組合選擇
-        return {
-          ...prev,
-          selectedServiceCategories: newSelected,
-          selectedPackage: '',  // 🔥 清空常用組合
-          packageMultiplier: 1   // 重置倍數
-        };        
-      } 
-      // 🆕 選擇其他類別時，如果已有 AP，則清除 AP
-      else if (newSelected.includes('套組產品 (AP)')) {
-        newSelected = newSelected.filter(c => c !== '套組產品 (AP)');
-        newSelected.push(categoryValue);
-        setMessage('✓ 已取消套組產品，改為自選服務');
-        setTimeout(() => setMessage(''), 2500);
-      }
-      // 原有的聯動邏輯
-      else {
-        newSelected.push(categoryValue);
-        
-        // 聯動邏輯 1：勾選「萃取/QC (EQ)」→ 自動勾選「建庫服務 (L)」和「定序服務 (S)」
-        if (categoryValue === '萃取/QC (EQ)') {
-          const autoChecked = [];
-          if (!newSelected.includes('建庫服務 (L)')) {
-            newSelected.push('建庫服務 (L)');
-            autoChecked.push('建庫服務');
-          }
-          if (!newSelected.includes('定序服務 (S)')) {
-            newSelected.push('定序服務 (S)');
-            autoChecked.push('定序服務');
-          }
-          if (autoChecked.length > 0) {
-            setMessage(`✓ 已自動勾選：${autoChecked.join('、')}`);
+  // 處理服務類別勾選（含聯動邏輯）
+  // 處理服務類別勾選（含聯動和鎖定邏輯）
+  const handleServiceCategoryToggle = (categoryValue) => {
+    setFormData(prev => {
+      let newSelected = [...prev.selectedServiceCategories];
+
+      if (newSelected.includes(categoryValue)) {
+        // === 取消勾選 ===
+
+        // 🔒 阻擋規則 1：如果勾選了「萃取/QC (EQ)」，不能取消「建庫服務 (L)」或「定序服務 (S)」
+        if (categoryValue === '建庫服務 (L)' || categoryValue === '定序服務 (S)') {
+          if (newSelected.includes('萃取/QC (EQ)')) {
+            setMessage('❌ 已勾選「萃取/QC」，無法取消此項目');
             setTimeout(() => setMessage(''), 2000);
+            return prev;
           }
         }
-        
-        // 聯動邏輯 2：勾選「建庫服務 (L)」→ 自動勾選「定序服務 (S)」
-        if (categoryValue === '建庫服務 (L)') {
-          if (!newSelected.includes('定序服務 (S)')) {
-            newSelected.push('定序服務 (S)');
-            setMessage('✓ 已自動勾選：定序服務');
+
+        // 🔒 阻擋規則 2：如果勾選了「建庫服務 (L)」，不能取消「定序服務 (S)」
+        if (categoryValue === '定序服務 (S)') {
+          if (newSelected.includes('建庫服務 (L)')) {
+            setMessage('❌ 已勾選「建庫服務」，無法取消定序服務');
             setTimeout(() => setMessage(''), 2000);
+            return prev;
+          }
+        }
+
+        // 允許取消
+        newSelected = newSelected.filter(c => c !== categoryValue);
+
+      } else {
+        // === 勾選 ===
+
+        // 🆕 AP 互斥邏輯：選擇 AP 時清除其他所有類別
+        if (categoryValue === '套組產品 (AP)') {
+          newSelected = ['套組產品 (AP)'];
+          setMessage('✓ 已選擇套組產品，其他服務類別已自動清除');
+          setTimeout(() => setMessage(''), 2500);
+          // 🆕 清空常用組合選擇
+          return {
+            ...prev,
+            selectedServiceCategories: newSelected,
+            selectedPackage: '',  // 🔥 清空常用組合
+            packageMultiplier: 1   // 重置倍數
+          };
+        }
+        // 🆕 選擇其他類別時，如果已有 AP，則清除 AP
+        else if (newSelected.includes('套組產品 (AP)')) {
+          newSelected = newSelected.filter(c => c !== '套組產品 (AP)');
+          newSelected.push(categoryValue);
+          setMessage('✓ 已取消套組產品，改為自選服務');
+          setTimeout(() => setMessage(''), 2500);
+        }
+        // 原有的聯動邏輯
+        else {
+          newSelected.push(categoryValue);
+
+          // 聯動邏輯 1：勾選「萃取/QC (EQ)」→ 自動勾選「建庫服務 (L)」和「定序服務 (S)」
+          if (categoryValue === '萃取/QC (EQ)') {
+            const autoChecked = [];
+            if (!newSelected.includes('建庫服務 (L)')) {
+              newSelected.push('建庫服務 (L)');
+              autoChecked.push('建庫服務');
+            }
+            if (!newSelected.includes('定序服務 (S)')) {
+              newSelected.push('定序服務 (S)');
+              autoChecked.push('定序服務');
+            }
+            if (autoChecked.length > 0) {
+              setMessage(`✓ 已自動勾選：${autoChecked.join('、')}`);
+              setTimeout(() => setMessage(''), 2000);
+            }
+          }
+
+          // 聯動邏輯 2：勾選「建庫服務 (L)」→ 自動勾選「定序服務 (S)」
+          if (categoryValue === '建庫服務 (L)') {
+            if (!newSelected.includes('定序服務 (S)')) {
+              newSelected.push('定序服務 (S)');
+              setMessage('✓ 已自動勾選：定序服務');
+              setTimeout(() => setMessage(''), 2000);
+            }
           }
         }
       }
-    }
-    
-    return { ...prev, selectedServiceCategories: newSelected };
-  });
-};
+
+      return { ...prev, selectedServiceCategories: newSelected };
+    });
+  };
 
   // 驗證當前步驟必填欄位
+  // 🆕 驗證分析組別一致性 (Shared Function)
+  const validateAnalysisGroups = (currentFormData) => {
+    const showDEParams = currentFormData.selectedServiceCategories.length === 1 &&
+      currentFormData.selectedServiceCategories[0] === '分析服務 (A)' &&
+      currentFormData.serviceItems.find(item => item.category === '分析服務 (A)')?.services.some(s => s.service && ['A205', 'A207'].some(code => s.service.includes(code)));
+
+    if (!showDEParams) return { isValid: true, errors: {}, warnings: {}, rowErrors: {} };
+
+    const sampleSheet = currentFormData.sampleType === 'Library'
+      ? currentFormData.libraryInfo.sampleSheet
+      : currentFormData.sampleInfo.sampleSheet;
+
+    const comparisonGroups = currentFormData.analysisRequirements.comparisonGroups;
+    const groups = ['analysisGroup1', 'analysisGroup2', 'analysisGroup3'];
+    const groupLabels = {
+      analysisGroup1: '分析組別一',
+      analysisGroup2: '分析組別二',
+      analysisGroup3: '分析組別三'
+    };
+
+    const result = {
+      isValid: true,
+      errors: {},      // Blocking group-level errors
+      warnings: {},    // Non-blocking group-level warnings
+      rowErrors: {}    // Blocking row-level errors (keyed by rowIdx)
+    };
+
+    // 用於檢測重複組合
+    const allPairs = { analysisGroup1: [], analysisGroup2: [], analysisGroup3: [] };
+
+    comparisonGroups.forEach((row, rowIdx) => {
+      groups.forEach((groupKey, index) => {
+        const groupNum = index + 1;
+        const controlKey = `group${groupNum}Control`;
+        const treatmentKey = `group${groupNum}Treatment`;
+        const cVal = row[controlKey];
+        const tVal = row[treatmentKey];
+
+        // 收集 Pair 用於後續檢查重複
+        if (cVal && tVal) {
+          allPairs[groupKey].push({ control: cVal, treatment: tVal, rowIdx });
+        }
+
+        // Priority 1: Self-comparison (Blocking)
+        if (cVal && tVal && cVal === tVal) {
+          if (!result.rowErrors[rowIdx]) result.rowErrors[rowIdx] = {};
+          result.rowErrors[rowIdx][groupKey] = 'Control 不可等於 Treatment';
+          result.isValid = false;
+          return; // 優先級最高，該格不繼續檢查
+        }
+
+        // Priority 3: Incomplete Pair (Blocking)
+        // 注意：Priority 2 (Duplicate) 是跨列檢查，稍後執行
+        if ((cVal && !tVal) || (!cVal && tVal)) {
+          if (!result.rowErrors[rowIdx]) result.rowErrors[rowIdx] = {};
+          result.rowErrors[rowIdx][groupKey] = '需完整選擇 Control 與 Treatment';
+          result.isValid = false;
+        }
+      });
+    });
+
+    // 2. 檢查 Duplicate Pairs (Priority 2)
+    groups.forEach(gKey => {
+      const pairs = allPairs[gKey];
+      for (let i = 0; i < pairs.length; i++) {
+        for (let j = i + 1; j < pairs.length; j++) {
+          const pair1 = pairs[i];
+          const pair2 = pairs[j];
+
+          // 只比較同向組合是否重複 (A vs B) == (A vs B)
+          if (pair1.control === pair2.control && pair1.treatment === pair2.treatment) {
+            const rIdx = pair2.rowIdx;
+            // 如果該格還沒有更高優先級的錯誤 (Self-comparison)，則標記重複
+            if (!result.rowErrors[rIdx]?.[gKey]) {
+              if (!result.rowErrors[rIdx]) result.rowErrors[rIdx] = {};
+              result.rowErrors[rIdx][gKey] = '重複的比較組合';
+              result.isValid = false;
+            }
+          }
+        }
+      }
+    });
+
+    // 3. 檢查 Group-level Usage (Priority 4 & 5)
+    groups.forEach((groupKey, index) => {
+      const groupNum = index + 1;
+      const controlKey = `group${groupNum}Control`;
+      const treatmentKey = `group${groupNum}Treatment`;
+
+      // 如果該組別已經有 Row-level Error (Priority 1, 2, 3)，則不再檢查 Usage
+      // 檢查是否有任何 rowError 涉及此 group
+      const hasRowError = Object.values(result.rowErrors).some(rowErr => rowErr[`group${groupNum}`]);
+      if (hasRowError) return;
+
+      // 收集樣本表中該組別的所有值
+      const sampleValues = new Set(
+        sampleSheet
+          .map(row => row[groupKey])
+          .filter(v => v && v.trim() !== '')
+      );
+
+      if (sampleValues.size === 0) return;
+
+      // 收集比較組中該組別的使用情況
+      const usedInComparison = new Set();
+      comparisonGroups.forEach(row => {
+        const cVal = row[controlKey];
+        const tVal = row[treatmentKey];
+        if (cVal) usedInComparison.add(cVal);
+        if (tVal) usedInComparison.add(tVal);
+      });
+
+      // Priority 4: No Usage (Blocking)
+      // 規則：樣本表有值，但比較組完全沒用到任何一個
+      const hasIntersection = [...sampleValues].some(v => usedInComparison.has(v));
+      if (!hasIntersection) {
+        result.errors[groupKey] = `樣本表的「${groupLabels[groupKey]}」所出現的值，至少要有一個出現在差異表達分析比較組中。`;
+        result.isValid = false;
+        return;
+      }
+
+      // Priority 5: Partial Usage (Warning - Non-blocking)
+      // 只有在沒有任何 Blocking Error (isValid === true) 時才顯示 Warning
+      if (result.isValid) {
+        const missingValues = [...sampleValues].filter(v => !usedInComparison.has(v));
+        if (missingValues.length > 0) {
+          result.warnings[groupKey] = `⚠️ 樣本表的「${groupLabels[groupKey]}」中的樣本 ${missingValues.join(', ')} 未被選擇，該樣本將不會進行分析。`;
+        }
+      }
+    });
+
+    return result;
+  };
+
   const validateStep = (step) => {
+    setMessage('');
+
     // 清除之前的錯誤
     setFieldErrors({
       sampleSheet: {},
       librarySampleSheet: {},
-      libraryDetailSheet: {}
-    });    
-    switch(step) {
-    case 0: // Step 0 驗證
-      if (!formData.salesCode) {
-        setMessage('請輸入業務代碼');
-        return false;
-      }
-      
-      // 檢查業務代碼是否存在
-      const foundSales = salesCodes.find(s => s.code === formData.salesCode);
-      if (!foundSales) {
-        setMessage('❌ 業務代碼不存在，請確認後重新輸入');
-        return false;
-      }
-      break;      
+      libraryDetailSheet: {},
+      analysisRequirements: {}
+    });
+    switch (step) {
+      case 0: // Step 0 驗證
+        if (!formData.salesCode) {
+          setMessage('請輸入業務代碼');
+          return false;
+        }
+
+        // 檢查業務代碼是否存在
+        const foundSales = salesCodes.find(s => s.code === formData.salesCode);
+        if (!foundSales) {
+          setMessage('❌ 業務代碼不存在，請確認後重新輸入');
+          return false;
+        }
+        break;
       case 1:
-      // 🆕 檢查業務人員
+        // 🆕 檢查業務人員
         if (!formData.salesPerson || formData.salesPerson === '請選擇業務人員') {
           setMessage('請選擇業務人員');
           return false;
-        }        
+        }
         if (!formData.organization || !formData.contactPerson || !formData.email) {
           setMessage('請填寫所有必填欄位（標 * 者）');
           return false;
@@ -827,15 +1040,38 @@ const handleServiceCategoryToggle = (categoryValue) => {
         if (!validateEmail(formData.email)) {
           setMessage('Email 格式不正確（例：user@example.com，多email使用","分隔）');
           return false;
-        }        
+        }
         if (formData.selectedServiceCategories.length === 0) {
           setMessage('請至少勾選一個服務類別');
           return false;
         }
+
+        // 🆕 檢查物種 (RNAseq)
+        {
+          const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+          const isRNAseqAnalysis = analysisItem?.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+
+          if (isRNAseqAnalysis) {
+            if (!formData.species || formData.species === '物種請選擇') {
+              setMessage('請選擇物種');
+              return false;
+            }
+            if (formData.species === '其他') {
+              if (!formData.speciesOther || !formData.speciesOther.trim()) {
+                setMessage('請填寫物種俗名');
+                return false;
+              }
+              if (!formData.speciesOtherScientificName || !formData.speciesOtherScientificName.trim()) {
+                setMessage('請填寫物種學名');
+                return false;
+              }
+            }
+          }
+        }
         break;
       case 2:
         // 驗證服務項目
-        const hasEmptyService = formData.serviceItems.some(item => 
+        const hasEmptyService = formData.serviceItems.some(item =>
           !item.services.some(s => s.service && s.quantity)
         );
         if (hasEmptyService) {
@@ -846,10 +1082,10 @@ const handleServiceCategoryToggle = (categoryValue) => {
         // 🆕 檢查 S-G000 的最低數量限制
         const sequencingItem = formData.serviceItems.find(item => item.category === '定序服務 (S)');
         if (sequencingItem) {
-          const sg000Service = sequencingItem.services.find(s => 
+          const sg000Service = sequencingItem.services.find(s =>
             s.service === 'S-G000 二代定序 - 定序量購買'
           );
-          
+
           if (sg000Service && sg000Service.quantity) {
             const quantity = parseInt(sg000Service.quantity);
             if (quantity < 5) {
@@ -857,295 +1093,455 @@ const handleServiceCategoryToggle = (categoryValue) => {
               return false;
             }
           }
-        }        
-      // 🆕 檢查建庫服務是否與萃取類型匹配
-      const extractionType = getExtractionType();
-      const libraryItem = formData.serviceItems.find(item => item.category === '建庫服務 (L)');
-      
-      if (extractionType && libraryItem) {
-        const hasInvalidLibrary = libraryItem.services.some(s => {
-          if (!s.service) return false;
-          
-          if (extractionType === 'DNA') {
-            // DNA 萃取不能選 L-RN 開頭
-            return s.service.startsWith('L-RN');
-          }
-          if (extractionType === 'RNA') {
-            // RNA 萃取只能選 L-RN 開頭
-            return !s.service.startsWith('L-RN');
-          }
-          return false;
-        });
-        
-        if (hasInvalidLibrary) {
-          setMessage(`❌ 建庫服務與萃取類型不符！${extractionType === 'RNA' ? 'RNA 萃取只能選擇 L-RN 開頭的建庫服務' : 'DNA 萃取不能選擇 L-RN 開頭的建庫服務'}`);
-          return false;
         }
-      }
-      break;        
-      
-    case 3:
-      const errors = {
-        sampleSheet: {},
-        librarySampleSheet: {},
-        libraryDetailSheet: {}
-      };
-      
-      if (formData.sampleType === 'Library') {
-        // ========== Library 驗證 ==========
-        
-        // === 1. Library (第一個表格) 驗證 ===
-        for (let i = 0; i < formData.libraryInfo.sampleSheet.length; i++) {
-          const row = formData.libraryInfo.sampleSheet[i];
-          const rowNum = i + 1;
-          
-          // 🆕 檢查 Sample_Name (sampleName)
-          if (!row.sampleName || !row.sampleName.trim()) {
-            if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
-            errors.sampleSheet[i].sampleName = 'Sample_Name 不可為空';
-          }
-          
-          // 🆕 檢查 Tube_Name (tubeLabel)
-          if (!row.tubeLabel || !row.tubeLabel.trim()) {
-            if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
-            errors.sampleSheet[i].tubeLabel = 'Tube Label 不可為空';
-          }
-          
-          // 🆕 檢查 預期定序量 (expectedSeq)
-          if (!row.expectedSeq || !row.expectedSeq.trim()) {
-            if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
-            errors.sampleSheet[i].expectedSeq = '預期定序量不可為空';
-          }
-        }
-        
-        // === 2. Library 第一個表格重複檢查 ===
-        const sampleNames1 = formData.libraryInfo.sampleSheet
-          .map((row, idx) => ({ name: row.sampleName?.trim(), idx }))
-          .filter(item => item.name);
-        
-        const duplicateMap1 = {};
-        sampleNames1.forEach(item => {
-          if (duplicateMap1[item.name]) {
-            duplicateMap1[item.name].push(item.idx);
-          } else {
-            duplicateMap1[item.name] = [item.idx];
-          }
-        });
-        
-        Object.entries(duplicateMap1).forEach(([name, indices]) => {
-          if (indices.length > 1) {
-            indices.forEach(idx => {
-              if (!errors.sampleSheet[idx]) errors.sampleSheet[idx] = {};
-              errors.sampleSheet[idx].sampleName = `重複的 Sample_Name: ${name}`;
-            });
-          }
-        });
-        
-        // === 3. Library Sample Sheet (第二個表格) 驗證 ===
-        for (let i = 0; i < formData.libraryInfo.librarySampleSheet.length; i++) {
-          const row = formData.libraryInfo.librarySampleSheet[i];
-          const rowNum = i + 1;
-          
-          // 🆕 檢查 Sample_Name (sampleName)
-          if (!row.sampleName || !row.sampleName.trim()) {
-            if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
-            errors.libraryDetailSheet[i].sampleName = 'Sample_Name 不可為空';
-          }
-          
-          // 🆕 檢查 Index 1 (i7) (index1Seq)
-          if (!row.index1Seq || !row.index1Seq.trim()) {
-            if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
-            errors.libraryDetailSheet[i].index1Seq = 'Index 1 (i7) 不可為空';
-          }
-          
-          // 🆕 檢查 Index 2 (i5) (index2Seq)
-          if (!row.index2Seq || !row.index2Seq.trim()) {
-            if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
-            errors.libraryDetailSheet[i].index2Seq = 'Index 2 (i5) 不可為空';
-          }
-          
-          // 🆕 檢查 Library (library)
-          if (!row.library || !row.library.trim()) {
-            if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
-            errors.libraryDetailSheet[i].library = 'Library 不可為空';
-          }
-        }
-        
-        // === 4. Library Sample Sheet 重複檢查 ===
-        const sampleNames2 = formData.libraryInfo.librarySampleSheet
-          .map((row, idx) => ({ name: row.sampleName?.trim(), idx }))
-          .filter(item => item.name);
-        
-        const duplicateMap2 = {};
-        sampleNames2.forEach(item => {
-          if (duplicateMap2[item.name]) {
-            duplicateMap2[item.name].push(item.idx);
-          } else {
-            duplicateMap2[item.name] = [item.idx];
-          }
-        });
-        
-        Object.entries(duplicateMap2).forEach(([name, indices]) => {
-          if (indices.length > 1) {
-            indices.forEach(idx => {
-              if (!errors.libraryDetailSheet[idx]) errors.libraryDetailSheet[idx] = {};
-              errors.libraryDetailSheet[idx].sampleName = `重複的 Sample_Name: ${name}`;
-            });
-          }
-        });
-        
-      } else if (formData.sampleType !== '無送樣') {
-        // ========== Sample (DNA/RNA/Cell/Blood) 驗證 ==========
-        
-        // 檢查空值
-        for (let i = 0; i < formData.sampleInfo.sampleSheet.length; i++) {
-          const row = formData.sampleInfo.sampleSheet[i];
-          const rowNum = i + 1;
-          
-          if (!row.sampleName || !row.sampleName.trim()) {
-            if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
-            errors.sampleSheet[i].sampleName = 'Sample_Name 不可為空';
-          }
-          
-          if (!row.tubeLabel || !row.tubeLabel.trim()) {
-            if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
-            errors.sampleSheet[i].tubeLabel = 'Tube Label 不可為空';
-          }
-          // 🆕 檢查預期定序量
-          if (!row.expectedSeq || !String(row.expectedSeq).trim()) {
-            if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
-            errors.sampleSheet[i].expectedSeq = '預期定序量不可為空';
-          }          
-        }
-        
-        // 檢查重複
-        const sampleNames = formData.sampleInfo.sampleSheet
-          .map((row, idx) => ({ name: row.sampleName?.trim(), idx }))
-          .filter(item => item.name);
-        
-        const duplicateMap = {};
-        sampleNames.forEach(item => {
-          if (duplicateMap[item.name]) {
-            duplicateMap[item.name].push(item.idx);
-          } else {
-            duplicateMap[item.name] = [item.idx];
-          }
-        });
-        
-        Object.entries(duplicateMap).forEach(([name, indices]) => {
-          if (indices.length > 1) {
-            indices.forEach(idx => {
-              if (!errors.sampleSheet[idx]) errors.sampleSheet[idx] = {};
-              errors.sampleSheet[idx].sampleName = `重複的 Sample_Name: ${name}`;
-            });
-          }
-        });
-      }
-      
-      // 如果有錯誤，設置錯誤狀態並返回 false
-      if (Object.keys(errors.sampleSheet).length > 0 || 
-          Object.keys(errors.libraryDetailSheet).length > 0) {
-        setFieldErrors(errors);
-        setMessage('❌ 表格中有錯誤，請檢查紅色標示的欄位');
-        return false;
-      }
-      
-      // 🆕 定序量檢查（無論過多過少都不能通過）
-      const totalSequencing = calculateTotalSequencing();
-      const expectedSequencing = calculateExpectedSequencing();
-      if (totalSequencing > 0 && formData.sampleType !== '無送樣') {
-        if (expectedSequencing === 0) {
-          setMessage('❌ 請填寫樣本的預期定序量');
-          return false;
-        }
-        
-        if (expectedSequencing > totalSequencing) {
-          const diff = expectedSequencing - totalSequencing;
-          setMessage(`❌ 預期定序量超過委託量 ${diff.toLocaleString()} GB，請調整樣本預期定序量或增加定序服務數量`);
-          return false;
-        }
-        
-        if (expectedSequencing < totalSequencing) {
-          const diff = totalSequencing - expectedSequencing;
-          setMessage(`❌ 預期定序量不足，還有 ${diff.toLocaleString()} GB 未分配，請調整樣本預期定序量`);
-          return false;
-        }
-      }
-      break;
-  }
-  
-  setMessage('');
-  return true;
-};
+        // 🆕 檢查建庫服務是否與萃取類型匹配
+        const extractionType = getExtractionType();
+        const libraryItem = formData.serviceItems.find(item => item.category === '建庫服務 (L)');
 
-const nextStep = () => {
-  if (isLocked) return;
+        if (extractionType && libraryItem) {
+          const hasInvalidLibrary = libraryItem.services.some(s => {
+            if (!s.service) return false;
 
-  if (!validateStep(currentStep)) return;
+            if (extractionType === 'DNA') {
+              // DNA 萃取不能選 L-RN 開頭
+              return s.service.startsWith('L-RN');
+            }
+            if (extractionType === 'RNA') {
+              // RNA 萃取只能選 L-RN 開頭
+              return !s.service.startsWith('L-RN');
+            }
+            return false;
+          });
 
-  // 從步驟1到步驟2時
-  if (currentStep === 1 && formData.selectedServiceCategories.length > 0) {
-    
-    // 🆕 特殊處理：如果選擇了 AP 套組
-    if (formData.selectedServiceCategories.includes('套組產品 (AP)')) {
-      const newServiceItems = [{
-        category: '套組產品 (AP)',
-        services: [{ service: '', quantity: '1' }],
-        libraryType: '無',
-        seqSpec: ''
-      }];
-      
-      setFormData(prev => ({ ...prev, serviceItems: newServiceItems }));
-      setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
-      window.scrollTo(0, 0);
-      return;
+          if (hasInvalidLibrary) {
+            setMessage(`❌ 建庫服務與萃取類型不符！${extractionType === 'RNA' ? 'RNA 萃取只能選擇 L-RN 開頭的建庫服務' : 'DNA 萃取不能選擇 L-RN 開頭的建庫服務'}`);
+            return false;
+          }
+        }
+        break;
+
+      case 3:
+        const errors = {
+          sampleSheet: {},
+          librarySampleSheet: {},
+          libraryDetailSheet: {},
+          analysisRequirements: {}
+        };
+
+        if (formData.sampleType === 'Library') {
+          // ========== Library 驗證 ==========
+
+          // === 1. Library (第一個表格) 驗證 ===
+          for (let i = 0; i < formData.libraryInfo.sampleSheet.length; i++) {
+            const row = formData.libraryInfo.sampleSheet[i];
+            const rowNum = i + 1;
+
+            // 🆕 檢查 Sample_Name (sampleName)
+            if (!row.sampleName || !row.sampleName.trim()) {
+              if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+              errors.sampleSheet[i].sampleName = 'Sample_Name 不可為空';
+            }
+
+            // 🆕 檢查 Tube_Name (tubeLabel)
+            if (!row.tubeLabel || !row.tubeLabel.trim()) {
+              if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+              errors.sampleSheet[i].tubeLabel = 'Tube Label 不可為空';
+            }
+
+            // 🆕 檢查 預期定序量 (expectedSeq)
+            if (!row.expectedSeq || !row.expectedSeq.trim()) {
+              if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+              errors.sampleSheet[i].expectedSeq = '預期定序量不可為空';
+            }
+          }
+
+          // === 2. Library 第一個表格重複檢查 ===
+          const sampleNames1 = formData.libraryInfo.sampleSheet
+            .map((row, idx) => ({ name: row.sampleName?.trim(), idx }))
+            .filter(item => item.name);
+
+          const duplicateMap1 = {};
+          sampleNames1.forEach(item => {
+            if (duplicateMap1[item.name]) {
+              duplicateMap1[item.name].push(item.idx);
+            } else {
+              duplicateMap1[item.name] = [item.idx];
+            }
+          });
+
+          Object.entries(duplicateMap1).forEach(([name, indices]) => {
+            if (indices.length > 1) {
+              indices.forEach(idx => {
+                if (!errors.sampleSheet[idx]) errors.sampleSheet[idx] = {};
+                errors.sampleSheet[idx].sampleName = `重複的 Sample_Name: ${name}`;
+              });
+            }
+          });
+
+          // === 3. Library Sample Sheet (第二個表格) 驗證 ===
+          for (let i = 0; i < formData.libraryInfo.librarySampleSheet.length; i++) {
+            const row = formData.libraryInfo.librarySampleSheet[i];
+            const rowNum = i + 1;
+
+            // 🆕 檢查 Sample_Name (sampleName)
+            if (!row.sampleName || !row.sampleName.trim()) {
+              if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
+              errors.libraryDetailSheet[i].sampleName = 'Sample_Name 不可為空';
+            }
+
+            // 🆕 檢查 Index 1 (i7) (index1Seq)
+            if (!row.index1Seq || !row.index1Seq.trim()) {
+              if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
+              errors.libraryDetailSheet[i].index1Seq = 'Index 1 (i7) 不可為空';
+            }
+
+            // 🆕 檢查 Index 2 (i5) (index2Seq)
+            if (!row.index2Seq || !row.index2Seq.trim()) {
+              if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
+              errors.libraryDetailSheet[i].index2Seq = 'Index 2 (i5) 不可為空';
+            }
+
+            // 🆕 檢查 Library (library)
+            if (!row.library || !row.library.trim()) {
+              if (!errors.libraryDetailSheet[i]) errors.libraryDetailSheet[i] = {};
+              errors.libraryDetailSheet[i].library = 'Library 不可為空';
+            }
+          }
+
+          // === 4. Library Sample Sheet 重複檢查 ===
+          const sampleNames2 = formData.libraryInfo.librarySampleSheet
+            .map((row, idx) => ({ name: row.sampleName?.trim(), idx }))
+            .filter(item => item.name);
+
+          const duplicateMap2 = {};
+          sampleNames2.forEach(item => {
+            if (duplicateMap2[item.name]) {
+              duplicateMap2[item.name].push(item.idx);
+            } else {
+              duplicateMap2[item.name] = [item.idx];
+            }
+          });
+
+          Object.entries(duplicateMap2).forEach(([name, indices]) => {
+            if (indices.length > 1) {
+              indices.forEach(idx => {
+                if (!errors.libraryDetailSheet[idx]) errors.libraryDetailSheet[idx] = {};
+                errors.libraryDetailSheet[idx].sampleName = `重複的 Sample_Name: ${name}`;
+              });
+            }
+          });
+
+        } else if (formData.sampleType !== '無送樣') {
+          // ========== Sample (DNA/RNA/Cell/Blood) 驗證 ==========
+
+          // 檢查空值
+          for (let i = 0; i < formData.sampleInfo.sampleSheet.length; i++) {
+            const row = formData.sampleInfo.sampleSheet[i];
+            const rowNum = i + 1;
+
+            if (!row.sampleName || !row.sampleName.trim()) {
+              if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+              errors.sampleSheet[i].sampleName = 'Sample_Name 不可為空';
+            }
+
+            if (!row.tubeLabel || !row.tubeLabel.trim()) {
+              if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+              errors.sampleSheet[i].tubeLabel = 'Tube Label 不可為空';
+            }
+            // 🆕 檢查預期定序量
+            if (!row.expectedSeq || !String(row.expectedSeq).trim()) {
+              if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+              errors.sampleSheet[i].expectedSeq = '預期定序量不可為空';
+            }
+          }
+
+          // 檢查重複
+          const sampleNames = formData.sampleInfo.sampleSheet
+            .map((row, idx) => ({ name: row.sampleName?.trim(), idx }))
+            .filter(item => item.name);
+
+          const duplicateMap = {};
+          sampleNames.forEach(item => {
+            if (duplicateMap[item.name]) {
+              duplicateMap[item.name].push(item.idx);
+            } else {
+              duplicateMap[item.name] = [item.idx];
+            }
+          });
+
+          Object.entries(duplicateMap).forEach(([name, indices]) => {
+            if (indices.length > 1) {
+              indices.forEach(idx => {
+                if (!errors.sampleSheet[idx]) errors.sampleSheet[idx] = {};
+                errors.sampleSheet[idx].sampleName = `重複的 Sample_Name: ${name}`;
+              });
+            }
+          });
+        }
+
+        // 🆕 DE Parameters 驗證 (RNAseq 分析時)
+        const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+        const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+        const isRNAseqAnalysis = analysisItem?.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+
+        // 檢查服務代碼（例如 "A205 2nd - RNAseq-Advanced" 應該匹配 A205）
+        const selectedService = analysisItem?.services[0]?.service || '';
+        const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
+        console.log('=== DE Parameters Validation Debug ===');
+        console.log('isOnlyAnalysis:', isOnlyAnalysis);
+        console.log('isRNAseqAnalysis:', isRNAseqAnalysis);
+        console.log('selectedService:', selectedService);
+        console.log('showDEParams:', showDEParams);
+
+        if (isOnlyAnalysis && isRNAseqAnalysis && showDEParams) {
+          console.log('Running DE Parameters validation...');
+          const deErrors = {};
+
+          // 檢查 |logFC|
+          const logFC = formData.analysisRequirements.deParams.logFC;
+          console.log('logFC value:', logFC);
+          if (!logFC || logFC.toString().trim() === '') {
+            deErrors.logFC = '|logFC| 不可為空';
+            console.log('logFC error: empty');
+          } else {
+            const value = logFC;
+            if (!isNaN(value)) {
+              const decimalPart = value.toString().split('.')[1];
+              if (decimalPart && decimalPart.length > 1) {
+                deErrors.logFC = '建議使用小數一位';
+                console.log('logFC error: too many decimals');
+              }
+            }
+          }
+
+          // 檢查 P cutoff
+          const pCutoff = formData.analysisRequirements.deParams.pCutoff;
+          console.log('pCutoff value:', pCutoff);
+          if (!pCutoff || pCutoff.toString().trim() === '') {
+            deErrors.pCutoff = 'P cutoff 不可為空';
+            console.log('pCutoff error: empty');
+          } else {
+            const value = parseFloat(pCutoff);
+            if (!isNaN(value) && (value <= 0 || value >= 1)) {
+              deErrors.pCutoff = 'P cutoff 必須介於 0 和 1 之間';
+              console.log('pCutoff error: out of range');
+            }
+          }
+
+          console.log('deErrors:', deErrors);
+          if (Object.keys(deErrors).length > 0) {
+            errors.analysisRequirements = deErrors;
+            console.log('Setting analysisRequirements errors');
+          }
+        } else {
+          console.log('DE Parameters validation skipped - conditions not met');
+        }
+
+        // 🆕 物種驗證 (RNAseq 分析時)
+        if (isRNAseqAnalysis) {
+          if (!formData.species || formData.species === '物種請選擇') {
+            setMessage('❌ 請選擇物種');
+            return false;
+          }
+
+          // 如果選擇「其他」,則必須填寫物種名稱和學名
+          if (formData.species === '其他') {
+            if (!formData.speciesOther || !formData.speciesOther.trim()) {
+              setMessage('❌ 請填寫物種俗名');
+              return false;
+            }
+            if (!formData.speciesOtherScientificName || !formData.speciesOtherScientificName.trim()) {
+              setMessage('❌ 請填寫物種學名');
+              return false;
+            }
+          }
+        }
+
+        // 🆕 分析組別一驗證 (只有 A205 和 A207 需要填寫分析組別一)
+        // A204 和 A206 的樣本表沒有分析組別欄位，所以不需要驗證
+        const showAnalysisGroups = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
+        if (isRNAseqAnalysis && showAnalysisGroups) {
+          const sampleSheet = formData.sampleType === 'Library'
+            ? formData.libraryInfo.sampleSheet
+            : formData.sampleInfo.sampleSheet;
+
+          for (let i = 0; i < sampleSheet.length; i++) {
+            const row = sampleSheet[i];
+            // 只檢查有 sampleName 的行
+            if (row.sampleName && row.sampleName.trim()) {
+              if (!row.analysisGroup1 || !row.analysisGroup1.trim()) {
+                if (formData.sampleType === 'Library') {
+                  if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+                  errors.sampleSheet[i].analysisGroup1 = '分析組別一不可為空';
+                } else {
+                  if (!errors.sampleSheet[i]) errors.sampleSheet[i] = {};
+                  errors.sampleSheet[i].analysisGroup1 = '分析組別一不可為空';
+                }
+              }
+            }
+          }
+        }
+
+        // 如果有錯誤，設置錯誤狀態並返回 false
+        console.log('=== Final Validation Check ===');
+        console.log('errors.sampleSheet keys:', Object.keys(errors.sampleSheet).length);
+        console.log('errors.libraryDetailSheet keys:', Object.keys(errors.libraryDetailSheet).length);
+        console.log('errors.analysisRequirements:', errors.analysisRequirements);
+        console.log('errors.analysisRequirements keys:', Object.keys(errors.analysisRequirements || {}).length);
+
+        if (Object.keys(errors.sampleSheet).length > 0 ||
+          Object.keys(errors.libraryDetailSheet).length > 0 ||
+          Object.keys(errors.analysisRequirements || {}).length > 0) {
+          console.log('Validation FAILED - blocking navigation');
+          setFieldErrors(errors);
+          setMessage('❌ 表格中有錯誤，請檢查紅色標示的欄位');
+          return false;
+        }
+
+        // 🆕 定序量檢查（無論過多過少都不能通過）
+        const totalSequencing = calculateTotalSequencing();
+        const expectedSequencing = calculateExpectedSequencing();
+        if (totalSequencing > 0 && formData.sampleType !== '無送樣') {
+          if (expectedSequencing === 0) {
+            setMessage('❌ 請填寫樣本的預期定序量');
+            return false;
+          }
+
+          if (expectedSequencing > totalSequencing) {
+            const diff = expectedSequencing - totalSequencing;
+            setMessage(`❌ 預期定序量超過委託量 ${diff.toLocaleString()} GB，請調整樣本預期定序量或增加定序服務數量`);
+            return false;
+          }
+
+          if (expectedSequencing < totalSequencing) {
+            const diff = totalSequencing - expectedSequencing;
+            setMessage(`❌ 預期定序量不足，還有 ${diff.toLocaleString()} GB 未分配，請調整樣本預期定序量`);
+            return false;
+          }
+        }
+
+        // 🆕 比較組驗證 (使用 Shared Function)
+        if (isOnlyAnalysis && isRNAseqAnalysis && showDEParams) {
+          const validationResult = validateAnalysisGroups(formData);
+
+          if (!validationResult.isValid) {
+            // 將 rowErrors 轉換為 fieldErrors 格式以便顯示
+            const comparisonErrors = validationResult.rowErrors;
+
+            // 將 groupErrors 轉換為 fieldErrors 格式
+            const groupErrors = {};
+            Object.keys(validationResult.errors).forEach(key => {
+              groupErrors[key] = validationResult.errors[key];
+            });
+
+            const newErrors = {
+              ...errors,
+              analysisRequirements: {
+                ...errors.analysisRequirements,
+                ...groupErrors,
+                comparisonErrors: Object.keys(comparisonErrors).length > 0 ? comparisonErrors : undefined
+              }
+            };
+
+            setFieldErrors(newErrors);
+
+            // 決定顯示什麼訊息
+            // 如果有 Group Level Error (Priority 4)，顯示該訊息
+            const firstGroupError = Object.values(validationResult.errors)[0];
+            if (firstGroupError) {
+              setMessage(`❌ ${firstGroupError}`);
+            } else {
+              setMessage('❌ 差異表達分析比較組設定有問題，請檢查紅色標示欄位');
+            }
+            return false;
+          }
+        }
+
+        break;
     }
-    
-    // 原有的處理邏輯（一般服務類別）
-    const categoryOrder = [
-      'QC (Q)', '萃取/QC (EQ)', '建庫服務 (L)', '定序服務 (S)', '分析服務 (A)', '套組產品 (AP)'
-    ];
-    const sortedCategories = categoryOrder.filter(cat =>
-      formData.selectedServiceCategories.includes(cat)
-    );
 
-    let newServiceItems;
+    return true;
+  };
 
-    if (formData.selectedPackage) {
-      const selectedPkg = safeCommonPackages.find(pkg => pkg.id === formData.selectedPackage);
-      
-      if (selectedPkg && selectedPkg.defaultServices) {
-        // 按照順序建立 serviceItems
-        newServiceItems = sortedCategories.map(category => {
-          // 找出該類別的預設服務
-          const defaultServices = selectedPkg.defaultServices.filter(
-            svc => svc.category === category
-          );
-          
-          if (defaultServices.length > 0) {
-            // 有預設服務，帶入預設值
-            return {
-              category,
-              services: defaultServices.map(ds => ({
-                service: ds.service || '',
-                quantity: ds.defaultQuantity || '1'
-              })),
-              libraryType: '無',
-              seqSpec: ''
-            };
-          } else {
-            // 沒有預設服務，給空白
-            return {
-              category,
-              services: [{ service: '', quantity: '' }],
-              libraryType: '無',
-              seqSpec: ''
-            };
-          }
-        });
+  const nextStep = () => {
+    if (isLocked) return;
+
+    if (!validateStep(currentStep)) return;
+
+    // 從步驟1到步驟2時
+    if (currentStep === 1 && formData.selectedServiceCategories.length > 0) {
+
+      // 🆕 特殊處理：如果選擇了 AP 套組
+      if (formData.selectedServiceCategories.includes('套組產品 (AP)')) {
+        const newServiceItems = [{
+          category: '套組產品 (AP)',
+          services: [{ service: '', quantity: '1' }],
+          libraryType: '無',
+          seqSpec: ''
+        }];
+
+        setFormData(prev => ({ ...prev, serviceItems: newServiceItems }));
+        setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      // 原有的處理邏輯（一般服務類別）
+      const categoryOrder = [
+        'QC (Q)', '萃取/QC (EQ)', '建庫服務 (L)', '定序服務 (S)', '分析服務 (A)', '套組產品 (AP)'
+      ];
+      const sortedCategories = categoryOrder.filter(cat =>
+        formData.selectedServiceCategories.includes(cat)
+      );
+
+      let newServiceItems;
+
+      if (formData.selectedPackage) {
+        const selectedPkg = safeCommonPackages.find(pkg => pkg.id === formData.selectedPackage);
+
+        if (selectedPkg && selectedPkg.defaultServices) {
+          // 按照順序建立 serviceItems
+          newServiceItems = sortedCategories.map(category => {
+            // 找出該類別的預設服務
+            const defaultServices = selectedPkg.defaultServices.filter(
+              svc => svc.category === category
+            );
+
+            if (defaultServices.length > 0) {
+              // 有預設服務，帶入預設值
+              return {
+                category,
+                services: defaultServices.map(ds => ({
+                  service: ds.service || '',
+                  quantity: ds.defaultQuantity || '1'
+                })),
+                libraryType: '無',
+                seqSpec: ''
+              };
+            } else {
+              // 沒有預設服務，給空白
+              return {
+                category,
+                services: [{ service: '', quantity: '' }],
+                libraryType: '無',
+                seqSpec: ''
+              };
+            }
+          });
+        } else {
+          // 找不到組合配置，使用空骨架
+          console.warn('找不到組合配置，使用空骨架');
+          newServiceItems = sortedCategories.map(category => ({
+            category,
+            services: [{ service: '', quantity: '' }],
+            libraryType: '無',
+            seqSpec: ''
+          }));
+        }
       } else {
-        // 找不到組合配置，使用空骨架
-        console.warn('找不到組合配置，使用空骨架');
+        // 一般模式：給空骨架
         newServiceItems = sortedCategories.map(category => ({
           category,
           services: [{ service: '', quantity: '' }],
@@ -1153,152 +1549,189 @@ const nextStep = () => {
           seqSpec: ''
         }));
       }
-    } else {
-      // 一般模式：給空骨架
-      newServiceItems = sortedCategories.map(category => ({
-        category,
-        services: [{ service: '', quantity: '' }],
-        libraryType: '無',
-        seqSpec: ''
-      }));
+
+      setFormData(prev => ({ ...prev, serviceItems: newServiceItems }));
     }
 
-    setFormData(prev => ({ ...prev, serviceItems: newServiceItems }));
-  }
+    // 從步驟2進入步驟3時的處理
+    if (currentStep === 2) {
+      // 🆕 如果選擇了 AP 套組，自動設定樣品類型和定序量
+      if (formData.selectedServiceCategories.includes('套組產品 (AP)')) {
+        const apItem = formData.serviceItems.find(item => item.category === '套組產品 (AP)');
+        if (apItem && apItem.services[0].service) {
+          const selectedAPService = apItem.services[0].service;
+          const quantity = parseInt(apItem.services[0].quantity) || 1; // 數量 = 樣本數
+          const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
+          const apConfig = apOptions.find(opt => opt.value === selectedAPService);
 
-  // 從步驟2進入步驟3時的處理
-  if (currentStep === 2) {
-    // 🆕 如果選擇了 AP 套組，自動設定樣品類型和定序量
-    if (formData.selectedServiceCategories.includes('套組產品 (AP)')) {
-      const apItem = formData.serviceItems.find(item => item.category === '套組產品 (AP)');
-      if (apItem && apItem.services[0].service) {
-        const selectedAPService = apItem.services[0].service;
-        const quantity = parseInt(apItem.services[0].quantity) || 1; // 數量 = 樣本數
-        const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
-        const apConfig = apOptions.find(opt => opt.value === selectedAPService);
-        
-        if (apConfig && apConfig.binding) {
-          // 自動設定樣品類型
-          if (apConfig.binding.sampleType) {
-            setFormData(prev => ({
-              ...prev,
-              sampleType: apConfig.binding.sampleType
-            }));
-          }
-          
-          // 🆕 根據數量自動建立樣本行，每行的預期定序量都是固定值
-          if (apConfig.binding.seqAmountGb) {
-            const seqPerSample = apConfig.binding.seqAmountGb; // 每個樣本的定序量
-            
-            // 建立對應數量的樣本行
-            const sampleRows = Array.from({ length: quantity }, (_, idx) => ({
-              no: idx + 1,
-              sampleName: '',
-              tubeLabel: '',
-              expectedSeq: String(seqPerSample), // 🔒 固定值
-              conc: '',
-              vol: '',
-              ratio260280: '',
-              ratio260230: '',
-              dqnRqn: '',
-              note: ''
-            }));
-            
-            const libraryRows = Array.from({ length: quantity }, (_, idx) => ({
-              no: idx + 1,
-              sampleName: '',
-              tubeLabel: '',
-              conc: '',
-              vol: '',
-              ngsConc: '',
-              expectedSeq: String(seqPerSample), // 🔒 固定值
-              note: ''
-            }));
-            
-            // 根據樣品類型更新對應的表單
-            if (apConfig.binding.sampleType === 'Library') {
+          if (apConfig && apConfig.binding) {
+            // 自動設定樣品類型
+            if (apConfig.binding.sampleType) {
               setFormData(prev => ({
                 ...prev,
-                libraryInfo: {
-                  ...prev.libraryInfo,
-                  sampleSheet: libraryRows
-                },
-                sampleCount: quantity // 🆕 自動設定樣本數量
-              }));
-            } else if (apConfig.binding.sampleType !== '無送樣') {
-              setFormData(prev => ({
-                ...prev,
-                sampleInfo: {
-                  ...prev.sampleInfo,
-                  sampleSheet: sampleRows
-                },
-                sampleCount: quantity // 🆕 自動設定樣本數量
+                sampleType: apConfig.binding.sampleType
               }));
             }
-            
-            const totalSeq = seqPerSample * quantity;
-            setMessage(`✓ 已自動建立 ${quantity} 個樣本，每個樣本定序量 ${seqPerSample} GB，總計 ${totalSeq} GB`);
-            setTimeout(() => setMessage(''), 3500);
+
+            // 🆕 根據數量自動建立樣本行，每行的預期定序量都是固定值
+            if (apConfig.binding.seqAmountGb) {
+              const seqPerSample = apConfig.binding.seqAmountGb; // 每個樣本的定序量
+
+              // 建立對應數量的樣本行
+              const sampleRows = Array.from({ length: quantity }, (_, idx) => ({
+                no: idx + 1,
+                sampleName: '',
+                tubeLabel: '',
+                expectedSeq: String(seqPerSample), // 🔒 固定值
+                conc: '',
+                vol: '',
+                ratio260280: '',
+                ratio260230: '',
+                dqnRqn: '',
+                note: ''
+              }));
+
+              const libraryRows = Array.from({ length: quantity }, (_, idx) => ({
+                no: idx + 1,
+                sampleName: '',
+                tubeLabel: '',
+                conc: '',
+                vol: '',
+                ngsConc: '',
+                expectedSeq: String(seqPerSample), // 🔒 固定值
+                note: ''
+              }));
+
+              // 根據樣品類型更新對應的表單
+              if (apConfig.binding.sampleType === 'Library') {
+                setFormData(prev => ({
+                  ...prev,
+                  libraryInfo: {
+                    ...prev.libraryInfo,
+                    sampleSheet: libraryRows
+                  },
+                  sampleCount: quantity // 🆕 自動設定樣本數量
+                }));
+              } else if (apConfig.binding.sampleType !== '無送樣') {
+                setFormData(prev => ({
+                  ...prev,
+                  sampleInfo: {
+                    ...prev.sampleInfo,
+                    sampleSheet: sampleRows
+                  },
+                  sampleCount: quantity // 🆕 自動設定樣本數量
+                }));
+              }
+
+              const totalSeq = seqPerSample * quantity;
+              setMessage(`✓ 已自動建立 ${quantity} 個樣本，每個樣本定序量 ${seqPerSample} GB，總計 ${totalSeq} GB`);
+              setTimeout(() => setMessage(''), 3500);
+            }
           }
         }
-      }
-    } else {
-      // 原有的邏輯（非 AP 套組）
-      const allowedTypes = getAllowedSampleTypes();
-      if (!allowedTypes.includes(formData.sampleType)) {
-        setFormData(prev => ({
-          ...prev,
-          sampleType: allowedTypes[0]
-        }));
-        setMessage(`✓ 已自動選擇樣品類型：${allowedTypes[0]}`);
-        setTimeout(() => setMessage(''), 2000);
-      }
-    }
-  }
-
-  setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
-  window.scrollTo(0, 0);
-};
-
-// 🆕 重新設計：根據具體萃取品項判斷類型
-const getExtractionType = () => {
-  const eqItem = formData.serviceItems.find(item => item.category === '萃取/QC (EQ)');
-  if (!eqItem) return null;
-  
-  let hasDNA = false;
-  let hasRNA = false;
-  
-  eqItem.services.forEach(s => {
-    if (s.service) {
-      // DNA 萃取服務：Q-ED 開頭或包含 DNA/cfDNA
-      if (s.service.startsWith('Q-ED') || s.service.includes('cfDNA')) {
-        hasDNA = true;
-      }
-      // RNA 萃取服務：Q-ER 開頭或包含 RNA/cfRNA
-      if (s.service.startsWith('Q-ER') || s.service.includes('cfRNA')) {
-        hasRNA = true;
+      } else {
+        // 原有的邏輯（非 AP 套組）
+        const allowedTypes = getAllowedSampleTypes();
+        if (!allowedTypes.includes(formData.sampleType)) {
+          setFormData(prev => ({
+            ...prev,
+            sampleType: allowedTypes[0]
+          }));
+          setMessage(`✓ 已自動選擇樣品類型：${allowedTypes[0]}`);
+          setTimeout(() => setMessage(''), 2000);
+        }
       }
     }
-  });
-  
-  if (hasDNA && !hasRNA) return 'DNA';
-  if (hasRNA && !hasDNA) return 'RNA';
-  if (hasDNA && hasRNA) return 'MIXED';
-  return null;
-};
+
+    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+    window.scrollTo(0, 0);
+  };
+
+  // 🆕 重新設計：根據具體萃取品項判斷類型
+  const getExtractionType = () => {
+    const eqItem = formData.serviceItems.find(item => item.category === '萃取/QC (EQ)');
+    if (!eqItem) return null;
+
+    let hasDNA = false;
+    let hasRNA = false;
+
+    eqItem.services.forEach(s => {
+      if (s.service) {
+        // DNA 萃取服務：Q-ED 開頭或包含 DNA/cfDNA
+        if (s.service.startsWith('Q-ED') || s.service.includes('cfDNA')) {
+          hasDNA = true;
+        }
+        // RNA 萃取服務：Q-ER 開頭或包含 RNA/cfRNA
+        if (s.service.startsWith('Q-ER') || s.service.includes('cfRNA')) {
+          hasRNA = true;
+        }
+      }
+    });
+
+    if (hasDNA && !hasRNA) return 'DNA';
+    if (hasRNA && !hasDNA) return 'RNA';
+    if (hasDNA && hasRNA) return 'MIXED';
+    return null;
+  };
 
 
-// 🆕 根據萃取類型過濾建庫服務選項
-const getFilteredLibraryServices = () => {
-  const allServices = serviceOptionsByCategory['建庫服務 (L)'] || [];
-  
-  // 🆕 第一步：套組過濾
-  let filtered = allServices;
-  
-  if (formData.selectedPackage) {
-    const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
-    if (pkg && pkg.serviceFilters && pkg.serviceFilters['建庫服務 (L)']) {
-      const allowed = pkg.serviceFilters['建庫服務 (L)'].allowedServices || [];
+  // 🆕 根據萃取類型過濾建庫服務選項
+  const getFilteredLibraryServices = () => {
+    const allServices = serviceOptionsByCategory['建庫服務 (L)'] || [];
+
+    // 🆕 第一步：套組過濾
+    let filtered = allServices;
+
+    if (formData.selectedPackage) {
+      const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
+      if (pkg && pkg.serviceFilters && pkg.serviceFilters['建庫服務 (L)']) {
+        const allowed = pkg.serviceFilters['建庫服務 (L)'].allowedServices || [];
+        if (allowed.length > 0) {
+          const allowSet = new Set(allowed);
+          filtered = filtered.filter(opt => {
+            const v = typeof opt === 'string' ? opt : opt.value;
+            return allowSet.has(v);
+          });
+        }
+      }
+    }
+
+    // 第二步：萃取類型過濾（原有邏輯）
+    const extractionType = getExtractionType();
+
+    if (!extractionType) {
+      return filtered;
+    }
+
+    if (extractionType === 'DNA') {
+      return filtered.filter(opt => !opt.value.startsWith('L-RN'));
+    }
+
+    if (extractionType === 'RNA') {
+      return filtered.filter(opt => opt.value.startsWith('L-RN'));
+    }
+
+    if (extractionType === 'MIXED') {
+      return filtered;
+    }
+
+    return filtered;
+  };
+
+
+
+  // 依「套組」限制某一類別在 Step2 可選的服務
+  const getServiceOptionsForCategory = (category) => {
+    const base = serviceOptionsByCategory?.[category] || [];
+    let filtered = base;
+
+    // 第一步：根據套組過濾
+    const pkg = formData?.selectedPackage
+      ? commonPackages.find(p => p.id === formData.selectedPackage)
+      : null;
+
+    if (pkg && pkg.serviceFilters && pkg.serviceFilters[category]) {
+      const allowed = pkg.serviceFilters[category].allowedServices || [];
       if (allowed.length > 0) {
         const allowSet = new Set(allowed);
         filtered = filtered.filter(opt => {
@@ -1307,147 +1740,125 @@ const getFilteredLibraryServices = () => {
         });
       }
     }
-  }
-  
-  // 第二步：萃取類型過濾（原有邏輯）
-  const extractionType = getExtractionType();
-  
-  if (!extractionType) {
+
+    // 第二步：建庫服務根據萃取類型過濾
+    if (category === '建庫服務 (L)') {
+      const extractionType = getExtractionType();
+
+      if (extractionType === 'DNA') {
+        filtered = filtered.filter(opt => {
+          const v = typeof opt === 'string' ? opt : opt.value;
+          return !v.startsWith('L-RN');
+        });
+      } else if (extractionType === 'RNA') {
+        filtered = filtered.filter(opt => {
+          const v = typeof opt === 'string' ? opt : opt.value;
+          return v.startsWith('L-RN');
+        });
+      }
+    }
+
+    // 🆕 第三步：分析服務根據萃取類型過濾
+    if (category === '分析服務 (A)') {
+      const extractionType = getExtractionType();
+
+      if (extractionType === 'DNA') {
+        // DNA 萃取：排除 RNA 相關分析
+        filtered = filtered.filter(opt => {
+          const v = typeof opt === 'string' ? opt : opt.value;
+          const name = v.toLowerCase();
+          // 方法1：根據編號前綴（例如 A3 開頭是 RNA）
+          // return !v.startsWith('A3');
+
+          // 方法2：根據關鍵字
+          return !name.includes('rna') && !name.includes('rnaseq');
+        });
+      } else if (extractionType === 'RNA') {
+        // RNA 萃取：只保留 RNA 相關分析
+        filtered = filtered.filter(opt => {
+          const v = typeof opt === 'string' ? opt : opt.value;
+          const name = v.toLowerCase();
+          // 方法1：根據編號前綴
+          // return v.startsWith('A3');
+
+          // 方法2：根據關鍵字
+          return name.includes('rna') || name.includes('rnaseq');
+        });
+      }
+    }
+
     return filtered;
-  }
-  
-  if (extractionType === 'DNA') {
-    return filtered.filter(opt => !opt.value.startsWith('L-RN'));
-  }
-  
-  if (extractionType === 'RNA') {
-    return filtered.filter(opt => opt.value.startsWith('L-RN'));
-  }
-  
-  if (extractionType === 'MIXED') {
-    return filtered;
-  }
-  
-  return filtered;
-};
+  };
 
+  // 🆕 根據服務類別獲取允許的樣品類型
+  const getAllowedSampleTypes = () => {
+    const hasEQ = formData.selectedServiceCategories.includes('萃取/QC (EQ)');
+    const hasLibrary = formData.selectedServiceCategories.includes('建庫服務 (L)');
+    const hasSequencing = formData.selectedServiceCategories.includes('定序服務 (S)');
 
-
-// 依「套組」限制某一類別在 Step2 可選的服務
-const getServiceOptionsForCategory = (category) => {
-  const base = serviceOptionsByCategory?.[category] || [];
-  let filtered = base;
-  
-  // 第一步：根據套組過濾
-  const pkg = formData?.selectedPackage
-    ? commonPackages.find(p => p.id === formData.selectedPackage)
-    : null;
-
-  if (pkg && pkg.serviceFilters && pkg.serviceFilters[category]) {
-    const allowed = pkg.serviceFilters[category].allowedServices || [];
-    if (allowed.length > 0) {
-      const allowSet = new Set(allowed);
-      filtered = filtered.filter(opt => {
-        const v = typeof opt === 'string' ? opt : opt.value;
-        return allowSet.has(v);
-      });
+    // 🆕 限制：只勾選「分析服務 (A)」且包含 RNAseq -> 強制「其他」
+    const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+    if (isOnlyAnalysis) {
+      const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+      if (analysisItem) {
+        const hasRNAseq = analysisItem.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+        if (hasRNAseq) {
+          return ['其他'];
+        }
+      }
     }
-  }
 
-  // 第二步：建庫服務根據萃取類型過濾
-  if (category === '建庫服務 (L)') {
-    const extractionType = getExtractionType();
-    
-    if (extractionType === 'DNA') {
-      filtered = filtered.filter(opt => {
-        const v = typeof opt === 'string' ? opt : opt.value;
-        return !v.startsWith('L-RN');
-      });
-    } else if (extractionType === 'RNA') {
-      filtered = filtered.filter(opt => {
-        const v = typeof opt === 'string' ? opt : opt.value;
-        return v.startsWith('L-RN');
-      });
+    // 情況1：有萃取 - 不能選 DNA/RNA/Library（因為萃取是從原始樣本提取）
+    if (hasEQ) {
+      return ['Cell', 'Blood', '其他'];
     }
-  }
 
-  // 🆕 第三步：分析服務根據萃取類型過濾
-  if (category === '分析服務 (A)') {
-    const extractionType = getExtractionType();
-    
-    if (extractionType === 'DNA') {
-      // DNA 萃取：排除 RNA 相關分析
-      filtered = filtered.filter(opt => {
-        const v = typeof opt === 'string' ? opt : opt.value;
-        const name = v.toLowerCase();
-        // 方法1：根據編號前綴（例如 A3 開頭是 RNA）
-        // return !v.startsWith('A3');
-        
-        // 方法2：根據關鍵字
-        return !name.includes('rna') && !name.includes('rnaseq');
-      });
-    } else if (extractionType === 'RNA') {
-      // RNA 萃取：只保留 RNA 相關分析
-      filtered = filtered.filter(opt => {
-        const v = typeof opt === 'string' ? opt : opt.value;
-        const name = v.toLowerCase();
-        // 方法1：根據編號前綴
-        // return v.startsWith('A3');
-        
-        // 方法2：根據關鍵字
-        return name.includes('rna') || name.includes('rnaseq');
-      });
+    // 情況2：有建庫但沒萃取 - 不能選 Library（因為建庫是將 DNA/RNA 做成 Library）
+    if (hasLibrary && !hasEQ) {
+      return ['DNA', 'RNA'];
     }
-  }
 
-  return filtered;
-};
+    // 情況3：只有定序（沒有萃取、沒有建庫）- 只能選 Library
+    if (hasSequencing && !hasEQ && !hasLibrary) {
+      return ['Library'];
+    }
 
-// 🆕 根據服務類別獲取允許的樣品類型
-const getAllowedSampleTypes = () => {
-  const hasEQ = formData.selectedServiceCategories.includes('萃取/QC (EQ)');
-  const hasLibrary = formData.selectedServiceCategories.includes('建庫服務 (L)');
-  const hasSequencing = formData.selectedServiceCategories.includes('定序服務 (S)');
-  
-  // 情況1：有萃取 - 不能選 DNA/RNA/Library（因為萃取是從原始樣本提取）
-  if (hasEQ) {
-    return ['Cell', 'Blood', '其他'];
-  }
-  
-  // 情況2：有建庫但沒萃取 - 不能選 Library（因為建庫是將 DNA/RNA 做成 Library）
-  if (hasLibrary && !hasEQ) {
-    return ['DNA', 'RNA'];
-  }
-  
-  // 情況3：只有定序（沒有萃取、沒有建庫）- 只能選 Library
-  if (hasSequencing && !hasEQ && !hasLibrary) {
-    return ['Library'];
-  }
-  
-  // 其他情況或沒有選擇任何服務：全部可選
-  return ['無送樣', 'Library', 'DNA', 'RNA', 'Cell', 'Blood', '其他'];
-};
+    // 其他情況或沒有選擇任何服務：全部可選
+    return ['無送樣', 'Library', 'DNA', 'RNA', 'Cell', 'Blood', '其他'];
+  };
 
-// 🆕 獲取樣品類型限制的提示訊息
-const getSampleTypeRestrictionMessage = () => {
-  const hasEQ = formData.selectedServiceCategories.includes('萃取/QC (EQ)');
-  const hasLibrary = formData.selectedServiceCategories.includes('建庫服務 (L)');
-  const hasSequencing = formData.selectedServiceCategories.includes('定序服務 (S)');
-  
-  if (hasEQ) {
-    return '📌「萃取/QC」服務，請送原始樣本（Cell、Blood 等）';
-  }
-  
-  if (hasLibrary && !hasEQ) {
-    return '📌 「建庫服務」，請送 DNA 或 RNA 樣本';
-  }
-  
-  if (hasSequencing && !hasEQ && !hasLibrary) {
-    return '📌「定序服務」，請送已經完成建庫的 Library';
-  }
-  
-  return '';
-};
+  // 🆕 獲取樣品類型限制的提示訊息
+  const getSampleTypeRestrictionMessage = () => {
+    const hasEQ = formData.selectedServiceCategories.includes('萃取/QC (EQ)');
+    const hasLibrary = formData.selectedServiceCategories.includes('建庫服務 (L)');
+    const hasSequencing = formData.selectedServiceCategories.includes('定序服務 (S)');
+
+    // 🆕 限制：只勾選「分析服務 (A)」且包含 RNAseq
+    const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+    if (isOnlyAnalysis) {
+      const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+      if (analysisItem) {
+        const hasRNAseq = analysisItem.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
+        if (hasRNAseq) {
+          return '📌 純分析服務 (RNAseq)，樣品類型請選擇「其他」';
+        }
+      }
+    }
+
+    if (hasEQ) {
+      return '📌「萃取/QC」服務，請送原始樣本（Cell、Blood 等）';
+    }
+
+    if (hasLibrary && !hasEQ) {
+      return '📌 「建庫服務」，請送 DNA 或 RNA 樣本';
+    }
+
+    if (hasSequencing && !hasEQ && !hasLibrary) {
+      return '📌「定序服務」，請送已經完成建庫的 Library';
+    }
+
+    return '';
+  };
 
 
 
@@ -1463,7 +1874,7 @@ const getSampleTypeRestrictionMessage = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    
+
     if (name === 'organization') {
       const filtered = organizationOptions.filter(org =>
         org.toLowerCase().includes(value.toLowerCase())
@@ -1505,7 +1916,7 @@ const getSampleTypeRestrictionMessage = () => {
         setMessage(`❌ 此服務不在套組允許清單中，請選擇符合「${category}」的允許服務`);
         setTimeout(() => setMessage(''), 2500);
       }
-    }    
+    }
     // 🆕 S-G000 最低值即時檢查
     if (field === 'quantity') {
       const service = newItems[itemIndex].services[serviceIndex].service;
@@ -1516,7 +1927,7 @@ const getSampleTypeRestrictionMessage = () => {
           setTimeout(() => setMessage(''), 3000);
         }
       }
-    }    
+    }
     setFormData(prev => ({ ...prev, serviceItems: newItems }));
   };
 
@@ -1586,7 +1997,11 @@ const getSampleTypeRestrictionMessage = () => {
   // 🆕 修改 handleLibrarySampleSheetChange
   const handleLibrarySampleSheetChange = (index, field, value) => {
     const newSampleSheet = [...formData.libraryInfo.sampleSheet];
-    
+
+    // 🆕 在修改之前先保存舊值
+    const oldSampleName = newSampleSheet[index].sampleName;
+    const oldAnalysisGroup1 = newSampleSheet[index].analysisGroup1;
+
     // 🆕 如果是 AP 套組，阻止修改 expectedSeq
     if (field === 'expectedSeq') {
       const apConfig = getAPPackageConfig();
@@ -1596,9 +2011,20 @@ const getSampleTypeRestrictionMessage = () => {
         return; // 阻止修改
       }
     }
-    
-    newSampleSheet[index][field] = field === 'sampleName' ? sanitizeSampleName(value) : value;
-    
+
+    const sanitizedValue = field === 'sampleName' ? sanitizeSampleName(value) : value;
+    newSampleSheet[index][field] = sanitizedValue;
+
+    // 🆕 如果修改的是 sampleName，且 analysisGroup1 為空或等於舊的 sampleName，則自動更新 analysisGroup1
+    if (field === 'sampleName' && sanitizedValue) {
+      // 只在以下情況自動更新 analysisGroup1:
+      // 1. analysisGroup1 為空
+      // 2. analysisGroup1 等於舊的 sampleName (表示之前是自動填入的，沒被手動修改過)
+      if (!oldAnalysisGroup1 || oldAnalysisGroup1 === oldSampleName) {
+        newSampleSheet[index].analysisGroup1 = sanitizedValue;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       libraryInfo: {
@@ -1611,16 +2037,16 @@ const getSampleTypeRestrictionMessage = () => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     const rows = pastedText.split('\n').filter(row => row.trim());
-    
+
     const newSampleSheet = [...formData.libraryInfo.sampleSheet];
-    
+
     rows.forEach((row, rowIndex) => {
       const columns = row.split('\t');
       const targetIndex = startIndex + rowIndex;
-      
+
       // 智能判斷：如果第一欄是數字，就跳過（認為是序號）
       //const startCol = /^\d+$/.test(columns[0]) ? 1 : 0;
-      const startCol = 0 ;
+      const startCol = 0;
       while (targetIndex >= newSampleSheet.length) {
         newSampleSheet.push({
           no: newSampleSheet.length + 1,
@@ -1633,21 +2059,23 @@ const getSampleTypeRestrictionMessage = () => {
           note: ''
         });
       }
-      
+
       if (columns.length > startCol) {
+        const sampleName = sanitizeSampleName(columns[startCol] || '');
         newSampleSheet[targetIndex] = {
           no: targetIndex + 1,
-          sampleName: sanitizeSampleName(columns[startCol] || ''),  // 🆕 清理
+          sampleName: sampleName,  // 🆕 清理
           tubeLabel: columns[startCol + 1] || '',
           conc: columns[startCol + 2] || '',
           vol: columns[startCol + 3] || '',
           ngsConc: columns[startCol + 4] || '',
           expectedSeq: columns[startCol + 5] || '',
-          note: columns[startCol + 6] || ''
+          note: columns[startCol + 6] || '',
+          analysisGroup1: sampleName // 🆕 自動填入 analysisGroup1
         };
       }
     });
-    
+
     setFormData(prev => ({
       ...prev,
       libraryInfo: {
@@ -1655,59 +2083,67 @@ const getSampleTypeRestrictionMessage = () => {
         sampleSheet: newSampleSheet
       }
     }));
-    
+
     setMessage(`已貼上 ${rows.length} 行資料`);
     setTimeout(() => setMessage(''), 2000);
   };
 
-// 🆕 修改 addLibrarySampleSheetRow
-const addLibrarySampleSheetRow = () => {
-  const newRow = {
-    no: formData.libraryInfo.sampleSheet.length + 1,
-    sampleName: '',
-    tubeLabel: '',
-    conc: '',
-    vol: '',
-    ngsConc: '',
-    expectedSeq: '',
-    note: ''
+  // 🆕 修改 addLibrarySampleSheetRow
+  const addLibrarySampleSheetRow = () => {
+    // 🚫 限制最多 100 行
+    if (formData.libraryInfo.sampleSheet.length >= 100) {
+      setMessage('⚠️ 樣本表最多只能有 100 行');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    const newRow = {
+      no: formData.libraryInfo.sampleSheet.length + 1,
+      sampleName: '',
+      tubeLabel: '',
+      conc: '',
+      vol: '',
+      ngsConc: '',
+      expectedSeq: '',
+      note: '',
+      analysisGroup1: '' // 🆕 新增欄位
+    };
+    const newSampleSheet = [...formData.libraryInfo.sampleSheet, newRow];
+
+    // 🆕 計算樣本數量（新增時通常 sampleName 是空的，所以數量不變）
+    const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
+
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        sampleSheet: newSampleSheet
+      },
+      sampleCount: count  // 🆕 自動更新
+    }));
   };
-  const newSampleSheet = [...formData.libraryInfo.sampleSheet, newRow];
-  
-  // 🆕 計算樣本數量（新增時通常 sampleName 是空的，所以數量不變）
-  const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-  
-  setFormData(prev => ({
-    ...prev,
-    libraryInfo: {
-      ...prev.libraryInfo,
-      sampleSheet: newSampleSheet
-    },
-    sampleCount: count  // 🆕 自動更新
-  }));
-};
 
 
-// 🆕 修改 removeLibrarySampleSheetRow
-const removeLibrarySampleSheetRow = (index) => {
-  if (formData.libraryInfo.sampleSheet.length === 1) {
-    alert('至少需要保留一行');
-    return;
-  }
-  const newSampleSheet = formData.libraryInfo.sampleSheet.filter((_, i) => i !== index);
-  
-  // 🆕 自動計算樣本數量
-  const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-  
-  setFormData(prev => ({
-    ...prev,
-    libraryInfo: {
-      ...prev.libraryInfo,
-      sampleSheet: newSampleSheet
-    },
-    sampleCount: count  // 🆕 自動更新
-  }));
-};
+  // 🆕 修改 removeLibrarySampleSheetRow
+  const removeLibrarySampleSheetRow = (index) => {
+    if (formData.libraryInfo.sampleSheet.length === 1) {
+      alert('至少需要保留一行');
+      return;
+    }
+    const newSampleSheet = formData.libraryInfo.sampleSheet.filter((_, i) => i !== index);
+
+    // 🆕 自動計算樣本數量
+    const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
+
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        sampleSheet: newSampleSheet
+      },
+      sampleCount: count  // 🆕 自動更新
+    }));
+  };
 
   const handleLibraryDetailChange = (index, field, value) => {
     const newLibrarySheet = [...formData.libraryInfo.librarySampleSheet];
@@ -1722,57 +2158,57 @@ const removeLibrarySampleSheetRow = (index) => {
   };
 
   const handleLibraryDetailTablePaste = (e, startIndex) => {
-  e.preventDefault();
-  const pastedText = e.clipboardData.getData('text');
-  const rows = pastedText.split('\n').filter(row => row.trim());
-  
-  const newLibrarySheet = [...formData.libraryInfo.librarySampleSheet];
-  
-  rows.forEach((row, rowIndex) => {
-    const columns = row.split('\t');
-    const targetIndex = startIndex + rowIndex;
-    const startCol = /^\d+$/.test(columns[0]) ? 1 : 0;
-    
-    while (targetIndex >= newLibrarySheet.length) {
-      newLibrarySheet.push({
-        no: newLibrarySheet.length + 1,
-        sampleName: '',
-        libraryPrepKit: '',
-        indexAdapterKit: '',
-        setWellPosition: '',
-        index1Seq: '',
-        index2Seq: '',
-        note: '',
-        library: ''
-      });
-    }
-    
-    if (columns.length > startCol) {
-      newLibrarySheet[targetIndex] = {
-        no: targetIndex + 1,
-        sampleName: sanitizeSampleName(columns[startCol] || ''),  // 🆕 清理
-        libraryPrepKit: columns[startCol + 1] || '',
-        indexAdapterKit: columns[startCol + 2] || '',
-        setWellPosition: columns[startCol + 3] || '',
-        index1Seq: columns[startCol + 4] || '',
-        index2Seq: columns[startCol + 5] || '',
-        note: columns[startCol + 6] || '',
-        library: columns[startCol + 7] || ''
-      };
-    }
-  });
-  
-  setFormData(prev => ({
-    ...prev,
-    libraryInfo: {
-      ...prev.libraryInfo,
-      librarySampleSheet: newLibrarySheet
-    }
-  }));
-  
-  setMessage(`已貼上 ${rows.length} 行資料`);
-  setTimeout(() => setMessage(''), 2000);
-};
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const rows = pastedText.split('\n').filter(row => row.trim());
+
+    const newLibrarySheet = [...formData.libraryInfo.librarySampleSheet];
+
+    rows.forEach((row, rowIndex) => {
+      const columns = row.split('\t');
+      const targetIndex = startIndex + rowIndex;
+      const startCol = /^\d+$/.test(columns[0]) ? 1 : 0;
+
+      while (targetIndex >= newLibrarySheet.length) {
+        newLibrarySheet.push({
+          no: newLibrarySheet.length + 1,
+          sampleName: '',
+          libraryPrepKit: '',
+          indexAdapterKit: '',
+          setWellPosition: '',
+          index1Seq: '',
+          index2Seq: '',
+          note: '',
+          library: ''
+        });
+      }
+
+      if (columns.length > startCol) {
+        newLibrarySheet[targetIndex] = {
+          no: targetIndex + 1,
+          sampleName: sanitizeSampleName(columns[startCol] || ''),  // 🆕 清理
+          libraryPrepKit: columns[startCol + 1] || '',
+          indexAdapterKit: columns[startCol + 2] || '',
+          setWellPosition: columns[startCol + 3] || '',
+          index1Seq: columns[startCol + 4] || '',
+          index2Seq: columns[startCol + 5] || '',
+          note: columns[startCol + 6] || '',
+          library: columns[startCol + 7] || ''
+        };
+      }
+    });
+
+    setFormData(prev => ({
+      ...prev,
+      libraryInfo: {
+        ...prev.libraryInfo,
+        librarySampleSheet: newLibrarySheet
+      }
+    }));
+
+    setMessage(`已貼上 ${rows.length} 行資料`);
+    setTimeout(() => setMessage(''), 2000);
+  };
 
   const addLibraryDetailRow = () => {
     const newRow = {
@@ -1811,187 +2247,189 @@ const removeLibrarySampleSheetRow = (index) => {
   };
 
 
-const handleExcelUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  try {
-    const XLSX = await import('xlsx');
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const fileName = file.name.toLowerCase();
-    
-    if (fileName.includes('library')) {
-      // === Library 範本處理 ===
-      console.log('📊 Library 工作表:', workbook.SheetNames);
-      
-      // 工作表1: Sample Sheet
-      if (workbook.SheetNames[0]) {
+    try {
+      const XLSX = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const fileName = file.name.toLowerCase();
+
+      if (fileName.includes('library')) {
+        // === Library 範本處理 ===
+        console.log('📊 Library 工作表:', workbook.SheetNames);
+
+        // 工作表1: Sample Sheet
+        if (workbook.SheetNames[0]) {
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          console.log('📋 Sample Sheet 原始資料:', jsonData);
+
+          const newSampleSheet = [];
+          jsonData.forEach((row, index) => {
+            // 🆕 從第 2 行開始（index > 1），跳過標題和範例行
+            if (index > 3 && row && row.length > 1) {
+              const hasSeqNum = typeof row[0] === 'number' || !isNaN(row[0]);
+              const startIdx = hasSeqNum ? 1 : 0;
+
+              const sampleName = sanitizeSampleName(row[startIdx] ?? '');
+
+              // 🆕 過濾掉佔位符（Sample_Nam, Sample_Name 等）
+              if (sampleName &&
+                sampleName !== 'Sample_Name' &&
+                !sampleName.startsWith('Sample_Nam')) {
+                newSampleSheet.push({
+                  no: newSampleSheet.length + 1,
+                  sampleName: sampleName,
+                  tubeLabel: String(row[startIdx + 1] ?? ''),
+                  conc: String(row[startIdx + 2] ?? ''),
+                  vol: String(row[startIdx + 3] ?? ''),
+                  ngsConc: String(row[startIdx + 4] ?? ''),
+                  expectedSeq: String(row[startIdx + 5] ?? ''),
+                  note: String(row[startIdx + 6] ?? ''),
+                  analysisGroup1: sampleName // 🆕 自動填入 analysisGroup1
+                });
+              }
+            }
+          });
+
+          console.log('✅ 解析後的 Sample Sheet:', newSampleSheet);
+
+          if (newSampleSheet.length > 0) {
+            // 🆕 自動計算樣本數量
+            const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
+
+            setFormData(prev => ({
+              ...prev,
+              libraryInfo: {
+                ...prev.libraryInfo,
+                sampleSheet: newSampleSheet
+              },
+              sampleCount: count
+            }));
+          }
+        }
+
+        // 工作表2: Library Sample Sheet
+        if (workbook.SheetNames[1]) {
+          const worksheet = workbook.Sheets[workbook.SheetNames[1]];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          console.log('📋 Library Sample Sheet 原始資料:', jsonData);
+
+          const newLibrarySheet = [];
+          jsonData.forEach((row, index) => {
+            // 🆕 從第 2 行開始（index > 1），跳過標題和範例行
+            if (index > 3 && row && row.length > 1) {
+              const hasSeqNum = typeof row[0] === 'number' || !isNaN(row[0]);
+              const startIdx = hasSeqNum ? 1 : 0;
+
+              const sampleName = sanitizeSampleName(row[startIdx] ?? '');
+
+              // 🆕 過濾掉佔位符
+              if (sampleName &&
+                sampleName !== 'Sample_Name' &&
+                !sampleName.startsWith('Sample_Nam')) {
+                newLibrarySheet.push({
+                  no: newLibrarySheet.length + 1,
+                  sampleName: sampleName,
+                  libraryPrepKit: String(row[startIdx + 1] ?? ''),
+                  indexAdapterKit: String(row[startIdx + 2] ?? ''),
+                  setWellPosition: String(row[startIdx + 3] ?? ''),
+                  index1Seq: String(row[startIdx + 4] ?? ''),
+                  index2Seq: String(row[startIdx + 5] ?? ''),
+                  note: String(row[startIdx + 6] ?? ''),
+                  library: String(row[startIdx + 7] ?? '')
+                });
+              }
+            }
+          });
+
+          console.log('✅ 解析後的 Library Sample Sheet:', newLibrarySheet);
+
+          if (newLibrarySheet.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              libraryInfo: {
+                ...prev.libraryInfo,
+                librarySampleSheet: newLibrarySheet
+              }
+            }));
+          }
+        }
+
+        setMessage(`Library Excel 檔案已匯入`);
+
+      } else if (fileName.includes('sample')) {
+        // === Sample 範本處理 ===
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        console.log('📋 Sample Sheet 原始資料:', jsonData);
-        
+
+        console.log('📋 Sample 原始資料:', jsonData);
+
         const newSampleSheet = [];
         jsonData.forEach((row, index) => {
-          // 🆕 從第 2 行開始（index > 1），跳過標題和範例行
-          if (index > 3 && row && row.length > 1) {
+          // 🆕 從第 3 行開始（index > 2），因為 Sample 範本有大標題
+          if (index > 4 && row && row.length > 1) {
             const hasSeqNum = typeof row[0] === 'number' || !isNaN(row[0]);
             const startIdx = hasSeqNum ? 1 : 0;
-            
+
             const sampleName = sanitizeSampleName(row[startIdx] ?? '');
-            
-            // 🆕 過濾掉佔位符（Sample_Nam, Sample_Name 等）
-            if (sampleName && 
-                sampleName !== 'Sample_Name' && 
-                !sampleName.startsWith('Sample_Nam')) {
+
+            // 🆕 過濾掉佔位符
+            if (sampleName &&
+              sampleName !== 'Sample_Name' &&
+              !sampleName.startsWith('Sample_Nam')) {
               newSampleSheet.push({
                 no: newSampleSheet.length + 1,
                 sampleName: sampleName,
                 tubeLabel: String(row[startIdx + 1] ?? ''),
-                conc: String(row[startIdx + 2] ?? ''),
-                vol: String(row[startIdx + 3] ?? ''),
-                ngsConc: String(row[startIdx + 4] ?? ''),
-                expectedSeq: String(row[startIdx + 5] ?? ''),
-                note: String(row[startIdx + 6] ?? '')
+                expectedSeq: String(row[startIdx + 2] ?? ''),
+                conc: String(row[startIdx + 3] ?? ''),
+                vol: String(row[startIdx + 4] ?? ''),
+                ratio260280: String(row[startIdx + 5] ?? ''),
+                ratio260230: String(row[startIdx + 6] ?? ''),
+                dqnRqn: String(row[startIdx + 7] ?? ''),
+                note: String(row[startIdx + 8] ?? ''),
+                analysisGroup1: sampleName // 🆕 自動填入 analysisGroup1
               });
             }
           }
         });
-        
-        console.log('✅ 解析後的 Sample Sheet:', newSampleSheet);
-        
+
+        console.log('✅ 解析後的 Sample:', newSampleSheet);
+
         if (newSampleSheet.length > 0) {
           // 🆕 自動計算樣本數量
           const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-          
+
           setFormData(prev => ({
             ...prev,
-            libraryInfo: {
-              ...prev.libraryInfo,
+            sampleInfo: {
+              ...prev.sampleInfo,
               sampleSheet: newSampleSheet
             },
             sampleCount: count
           }));
+          setMessage(`Sample Excel 檔案已匯入(${count} 個樣本)`);
+        } else {
+          alert('未讀取到有效資料，請確認檔案格式');
         }
-      }
-      
-      // 工作表2: Library Sample Sheet
-      if (workbook.SheetNames[1]) {
-        const worksheet = workbook.Sheets[workbook.SheetNames[1]];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        console.log('📋 Library Sample Sheet 原始資料:', jsonData);
-        
-        const newLibrarySheet = [];
-        jsonData.forEach((row, index) => {
-          // 🆕 從第 2 行開始（index > 1），跳過標題和範例行
-          if (index > 3 && row && row.length > 1) {
-            const hasSeqNum = typeof row[0] === 'number' || !isNaN(row[0]);
-            const startIdx = hasSeqNum ? 1 : 0;
-            
-            const sampleName = sanitizeSampleName(row[startIdx] ?? '');
-            
-            // 🆕 過濾掉佔位符
-            if (sampleName && 
-                sampleName !== 'Sample_Name' && 
-                !sampleName.startsWith('Sample_Nam')) {
-              newLibrarySheet.push({
-                no: newLibrarySheet.length + 1,
-                sampleName: sampleName,
-                libraryPrepKit: String(row[startIdx + 1] ?? ''),
-                indexAdapterKit: String(row[startIdx + 2] ?? ''),
-                setWellPosition: String(row[startIdx + 3] ?? ''),
-                index1Seq: String(row[startIdx + 4] ?? ''),
-                index2Seq: String(row[startIdx + 5] ?? ''),
-                note: String(row[startIdx + 6] ?? ''),
-                library: String(row[startIdx + 7] ?? '')
-              });
-            }
-          }
-        });
-        
-        console.log('✅ 解析後的 Library Sample Sheet:', newLibrarySheet);
-        
-        if (newLibrarySheet.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            libraryInfo: {
-              ...prev.libraryInfo,
-              librarySampleSheet: newLibrarySheet
-            }
-          }));
-        }
-      }
-      
-      setMessage(`Library Excel 檔案已匯入`);
-      
-    } else if (fileName.includes('sample')) {
-      // === Sample 範本處理 ===
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
-      console.log('📋 Sample 原始資料:', jsonData);
-      
-      const newSampleSheet = [];
-      jsonData.forEach((row, index) => {
-        // 🆕 從第 3 行開始（index > 2），因為 Sample 範本有大標題
-        if (index > 4 && row && row.length > 1) {
-          const hasSeqNum = typeof row[0] === 'number' || !isNaN(row[0]);
-          const startIdx = hasSeqNum ? 1 : 0;
-          
-          const sampleName = sanitizeSampleName(row[startIdx] ?? '');
-          
-          // 🆕 過濾掉佔位符
-          if (sampleName && 
-              sampleName !== 'Sample_Name' && 
-              !sampleName.startsWith('Sample_Nam')) {
-            newSampleSheet.push({
-              no: newSampleSheet.length + 1,
-              sampleName: sampleName,
-              tubeLabel: String(row[startIdx + 1] ?? ''),
-              expectedSeq: String(row[startIdx + 2] ?? ''),
-              conc: String(row[startIdx + 3] ?? ''),
-              vol: String(row[startIdx + 4] ?? ''),
-              ratio260280: String(row[startIdx + 5] ?? ''),
-              ratio260230: String(row[startIdx + 6] ?? ''),
-              dqnRqn: String(row[startIdx + 7] ?? ''),
-              note: String(row[startIdx + 8] ?? '')
-            });
-          }
-        }
-      });
-      
-      console.log('✅ 解析後的 Sample:', newSampleSheet);
-      
-      if (newSampleSheet.length > 0) {
-        // 🆕 自動計算樣本數量
-        const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-        
-        setFormData(prev => ({
-          ...prev,
-          sampleInfo: {
-            ...prev.sampleInfo,
-            sampleSheet: newSampleSheet
-          },
-          sampleCount: count
-        }));
-        setMessage(`Sample Excel 檔案已匯入 (${count} 個樣本)`);
       } else {
-        alert('未讀取到有效資料，請確認檔案格式');
+        alert('檔案名稱必須包含 "library" 或 "sample"');
+        return;
       }
-    } else {
-      alert('檔案名稱必須包含 "library" 或 "sample"');
-      return;
+
+      setTimeout(() => setMessage(''), 2000);
+      e.target.value = '';
+    } catch (error) {
+      console.error('❌ 上傳錯誤:', error);
+      alert('上傳失敗：' + error.message);
     }
-    
-    setTimeout(() => setMessage(''), 2000);
-    e.target.value = '';
-  } catch (error) {
-    console.error('❌ 上傳錯誤:', error);
-    alert('上傳失敗：' + error.message);
-  }
-};
+  };
 
   const clearSampleSheet = () => {
     if (window.confirm('確定要清空所有 Sample Sheet 資料嗎？')) {
@@ -2007,7 +2445,8 @@ const handleExcelUpload = async (e) => {
             vol: '',
             ngsConc: '',
             expectedSeq: '',
-            note: ''
+            note: '',
+            analysisGroup1: '' // 🆕 清空時也包含此欄位
           }]
         }
       }));
@@ -2056,7 +2495,8 @@ const handleExcelUpload = async (e) => {
             ratio260280: '',
             ratio260230: '',
             dqnRqn: '',
-            note: ''
+            note: '',
+            analysisGroup1: '' // 🆕 清空時也包含此欄位
           }]
         }
       }));
@@ -2064,11 +2504,15 @@ const handleExcelUpload = async (e) => {
       setTimeout(() => setMessage(''), 2000);
     }
   };
-  
+
   // 🆕 修改 handleSampleSheetChange
   const handleSampleSheetChange = (index, field, value) => {
     const newSampleSheet = [...formData.sampleInfo.sampleSheet];
-    
+
+    // 🆕 在修改之前先保存舊值
+    const oldSampleName = newSampleSheet[index].sampleName;
+    const oldAnalysisGroup1 = newSampleSheet[index].analysisGroup1;
+
     // 🆕 如果是 AP 套組，阻止修改 expectedSeq
     if (field === 'expectedSeq') {
       const apConfig = getAPPackageConfig();
@@ -2078,11 +2522,22 @@ const handleExcelUpload = async (e) => {
         return; // 阻止修改
       }
     }
-    
-    newSampleSheet[index][field] = field === 'sampleName' ? sanitizeSampleName(value) : value;
-    
+
+    const sanitizedValue = field === 'sampleName' ? sanitizeSampleName(value) : value;
+    newSampleSheet[index][field] = sanitizedValue;
+
+    // 🆕 如果修改的是 sampleName，且 analysisGroup1 為空或等於舊的 sampleName，則自動更新 analysisGroup1
+    if (field === 'sampleName' && sanitizedValue) {
+      // 只在以下情況自動更新 analysisGroup1:
+      // 1. analysisGroup1 為空
+      // 2. analysisGroup1 等於舊的 sampleName (表示之前是自動填入的，沒被手動修改過)
+      if (!oldAnalysisGroup1 || oldAnalysisGroup1 === oldSampleName) {
+        newSampleSheet[index].analysisGroup1 = sanitizedValue;
+      }
+    }
+
     const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-    
+
     setFormData(prev => ({
       ...prev,
       sampleInfo: {
@@ -2093,117 +2548,124 @@ const handleExcelUpload = async (e) => {
     }));
   };
 
-// 🆕 修改 handleSampleTablePaste (Sample)
-const handleSampleTablePaste = (e, startIndex) => {
-  e.preventDefault();
-  const pastedText = e.clipboardData.getData('text');
-  const rows = pastedText.split('\n').filter(row => row.trim());
-  
-  const newSampleSheet = [...formData.sampleInfo.sampleSheet];
-  
-  rows.forEach((row, rowIndex) => {
-    const columns = row.split('\t');
-    const targetIndex = startIndex + rowIndex;
-    const startCol = /^\d+$/.test(columns[0]) ? 1 : 0;
-    
-    while (targetIndex >= newSampleSheet.length) {
-      newSampleSheet.push({
-        no: newSampleSheet.length + 1,
-        sampleName: '',
-        tubeLabel: '',
-        expectedSeq: '',
-        conc: '',
-        vol: '',
-        ratio260280: '',
-        ratio260230: '',
-        dqnRqn: '',
-        note: ''
-      });
-    }
-    
-    if (columns.length > startCol) {
-      newSampleSheet[targetIndex] = {
-        no: targetIndex + 1,
-        sampleName: sanitizeSampleName(columns[startCol] || ''),
-        tubeLabel: columns[startCol + 1] || '',
-        expectedSeq: columns[startCol + 2] || '',
-        conc: columns[startCol + 3] || '',
-        vol: columns[startCol + 4] || '',
-        ratio260280: columns[startCol + 5] || '',
-        ratio260230: columns[startCol + 6] || '',
-        dqnRqn: columns[startCol + 7] || '',
-        note: columns[startCol + 8] || ''
-      };
-    }
-  });
-  
-  // 🆕 自動計算樣本數量
-  const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-  
-  setFormData(prev => ({
-    ...prev,
-    sampleInfo: {
-      ...prev.sampleInfo,
-      sampleSheet: newSampleSheet
-    },
-    sampleCount: count  // 🆕 自動更新
-  }));
-  
-  setMessage(`已貼上 ${rows.length} 行資料，樣本數量：${count}`);
-  setTimeout(() => setMessage(''), 2000);
-};
+  // 🆕 修改 handleSampleTablePaste (Sample)
+  const handleSampleTablePaste = (e, startIndex) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const rows = pastedText.split('\n').filter(row => row.trim());
 
-// 🆕 修改 addSampleSheetRow
-const addSampleSheetRow = () => {
-  const apConfig = getAPPackageConfig();
-  const expectedSeq = apConfig ? String(apConfig.seqPerSample) : ''; // 🔒 AP 套組自動帶入
-  
-  const newRow = {
-    no: formData.sampleInfo.sampleSheet.length + 1,
-    sampleName: '',
-    tubeLabel: '',
-    expectedSeq: expectedSeq, // 🆕 自動帶入
-    conc: '',
-    vol: '',
-    ratio260280: '',
-    ratio260230: '',
-    dqnRqn: '',
-    note: ''
+    const newSampleSheet = [...formData.sampleInfo.sampleSheet];
+
+    rows.forEach((row, rowIndex) => {
+      const columns = row.split('\t');
+      const targetIndex = startIndex + rowIndex;
+      const startCol = /^\d+$/.test(columns[0]) ? 1 : 0;
+
+      while (targetIndex >= newSampleSheet.length) {
+        newSampleSheet.push({
+          no: newSampleSheet.length + 1,
+          sampleName: '',
+          tubeLabel: '',
+          expectedSeq: '',
+          conc: '',
+          vol: '',
+          ratio260280: '',
+          ratio260230: '',
+          dqnRqn: '',
+          note: ''
+        });
+      }
+
+      if (columns.length > startCol) {
+        newSampleSheet[targetIndex] = {
+          no: targetIndex + 1,
+          sampleName: sanitizeSampleName(columns[startCol] || ''),
+          tubeLabel: columns[startCol + 1] || '',
+          expectedSeq: columns[startCol + 2] || '',
+          conc: columns[startCol + 3] || '',
+          vol: columns[startCol + 4] || '',
+          ratio260280: columns[startCol + 5] || '',
+          ratio260230: columns[startCol + 6] || '',
+          dqnRqn: columns[startCol + 7] || '',
+          note: columns[startCol + 8] || ''
+        };
+      }
+    });
+
+    // 🆕 自動計算樣本數量
+    const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
+
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: newSampleSheet
+      },
+      sampleCount: count  // 🆕 自動更新
+    }));
+
+    setMessage(`已貼上 ${rows.length} 行資料，樣本數量：${count} `);
+    setTimeout(() => setMessage(''), 2000);
   };
-  const newSampleSheet = [...formData.sampleInfo.sampleSheet, newRow];
-  
-  const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-  
-  setFormData(prev => ({
-    ...prev,
-    sampleInfo: {
-      ...prev.sampleInfo,
-      sampleSheet: newSampleSheet
-    },
-    sampleCount: count
-  }));
-};
 
-// 🆕 修改 removeSampleSheetRow
-const removeSampleSheetRow = (index) => {
-  if (formData.sampleInfo.sampleSheet.length === 1) {
-    alert('至少需要保留一行');
-    return;
-  }
-  const newSampleSheet = formData.sampleInfo.sampleSheet.filter((_, i) => i !== index);
-  
-  // 🆕 自動計算樣本數量
-  const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
-  
-  setFormData(prev => ({
-    ...prev,
-    sampleInfo: {
-      ...prev.sampleInfo,
-      sampleSheet: newSampleSheet
-    },
-    sampleCount: count  // 🆕 自動更新
-  }));
-};
+  // 🆕 修改 addSampleSheetRow
+  const addSampleSheetRow = () => {
+    // 🚫 限制最多 100 行
+    if (formData.sampleInfo.sampleSheet.length >= 100) {
+      setMessage('⚠️ 樣本表最多只能有 100 行');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    const apConfig = getAPPackageConfig();
+    const expectedSeq = apConfig ? String(apConfig.seqPerSample) : ''; // 🔒 AP 套組自動帶入
+
+    const newRow = {
+      no: formData.sampleInfo.sampleSheet.length + 1,
+      sampleName: '',
+      tubeLabel: '',
+      expectedSeq: expectedSeq, // 🆕 自動帶入
+      conc: '',
+      vol: '',
+      ratio260280: '',
+      ratio260230: '',
+      dqnRqn: '',
+      note: ''
+    };
+    const newSampleSheet = [...formData.sampleInfo.sampleSheet, newRow];
+
+    const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
+
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: newSampleSheet
+      },
+      sampleCount: count
+    }));
+  };
+
+  // 🆕 修改 removeSampleSheetRow
+  const removeSampleSheetRow = (index) => {
+    if (formData.sampleInfo.sampleSheet.length === 1) {
+      alert('至少需要保留一行');
+      return;
+    }
+    const newSampleSheet = formData.sampleInfo.sampleSheet.filter((_, i) => i !== index);
+
+    // 🆕 自動計算樣本數量
+    const count = newSampleSheet.filter(row => row.sampleName && row.sampleName.trim() !== '').length;
+
+    setFormData(prev => ({
+      ...prev,
+      sampleInfo: {
+        ...prev.sampleInfo,
+        sampleSheet: newSampleSheet
+      },
+      sampleCount: count  // 🆕 自動更新
+    }));
+  };
   const handleSignatureSave = (signatureData) => {
     setFormData(prev => ({ ...prev, signature: signatureData }));
     // setShowSignaturePad(false);
@@ -2268,27 +2730,83 @@ const removeSampleSheetRow = (index) => {
     if (!validateStep(4)) {
       return;
     }
-    
+
+    // 🆕 提交前確認
+    if (!window.confirm('提交後無法編輯，請確認所有資料都正確，確認提交嗎？')) {
+      return;
+    }
+
+    // 🆕 在提交前自動填充 analysisRequirements.sampleSheet
+    const sourceSheet = formData.sampleType === 'Library'
+      ? formData.libraryInfo.sampleSheet
+      : formData.sampleInfo.sampleSheet;
+
+    const analysisSampleSheet = sourceSheet.map(row => ({
+      sampleName: row.sampleName,
+      group1: row.analysisGroup1 || '',
+      group2: row.analysisGroup2 || '',
+      group3: row.analysisGroup3 || '',
+      source: row.sampleSource || '',
+      note: row.analysisNote || ''
+    }));
+
+    // 🆕 根據服務代碼過濾 analysisRequirements
+    let cleanedAnalysisRequirements = {
+      ...formData.analysisRequirements,
+      sampleSheet: analysisSampleSheet
+    };
+
+    const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+    if (analysisItem && analysisItem.services[0] && analysisItem.services[0].service) {
+      const serviceCode = analysisItem.services[0].service;
+
+      // 預設空值結構
+      const emptyDeParams = { logFC: '', pMethod: '', pCutoff: '' };
+      const emptyComparisonGroups = [];
+      const emptyCustomReq = '';
+
+      if (serviceCode.startsWith('A204')) {
+        // A204: 只需要 sampleSheet
+        cleanedAnalysisRequirements.comparisonGroups = emptyComparisonGroups;
+        cleanedAnalysisRequirements.deParams = emptyDeParams;
+        cleanedAnalysisRequirements.customRequirements = emptyCustomReq;
+      } else if (serviceCode.startsWith('A205')) {
+        // A205: 需要 sampleSheet, comparisonGroups, deParams
+        cleanedAnalysisRequirements.customRequirements = emptyCustomReq;
+      } else if (serviceCode.startsWith('A206')) {
+        // A206: 需要 sampleSheet, customRequirements
+        cleanedAnalysisRequirements.comparisonGroups = emptyComparisonGroups;
+        cleanedAnalysisRequirements.deParams = emptyDeParams;
+      } else if (serviceCode.startsWith('A207')) {
+        // A207: 全部都需要 (保留原值)
+      }
+    }
+
+    const finalFormData = {
+      ...formData,
+      analysisRequirements: cleanedAnalysisRequirements
+    };
+
     try {
-      const response = await fetch('http://192.168.60.62:3001/api/orders', {
+      const response = await fetch('http://localhost:3001/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(finalFormData)
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setSubmitted(true);
         setExportReady(true);
         setOrderId(result.orderId);
-        setMessage(`需求單已成功提交！編號：${result.orderId}`);
+        setMessage(`需求單已成功提交！編號：${result.orderId} `);
         setIsLocked(true);
-        setTimeout(() => {
-          setSubmitted(false);
-        }, 5000);
+        // setTimeout(() => {
+        //   setSubmitted(false);
+        // }, 5000);
       } else {
         setMessage('提交失敗：' + result.error);
       }
@@ -2302,9 +2820,9 @@ const removeSampleSheetRow = (index) => {
       setMessage('請先提交訂單才能匯出 Excel');
       return;
     }
-    
+
     try {
-      const response = await fetch(`http://192.168.60.62:3001/api/orders/${orderId}/export`);
+      const response = await fetch(`http://localhost:3001/api/orders/${orderId}/export`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2321,19 +2839,48 @@ const removeSampleSheetRow = (index) => {
     }
   };
 
+  // 🆕 匯出分析需求單
+  const exportAnalysisRequest = async () => {
+    if (!orderId) {
+      setMessage('請先提交訂單才能匯出');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/orders/${orderId}/export-analysis`);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || '匯出失敗');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TGIA_Analysis_Request_${orderId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setMessage('分析需求單下載成功');
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage('匯出失敗：' + error.message);
+    }
+  };
+
   // 🆕 可搜尋的下拉選單組件
   const SearchableSelect = ({ value, options, onChange, placeholder, itemIndex, serviceIndex }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [highlightedIndex, setHighlightedIndex] = useState(0);
     const dropdownRef = useRef(null);
-    
+
     // 過濾選項
-    const filteredOptions = options.filter(opt => 
+    const filteredOptions = options.filter(opt =>
       opt.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
       opt.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
+
     // 點擊外部關閉
     React.useEffect(() => {
       const handleClickOutside = (e) => {
@@ -2344,15 +2891,15 @@ const removeSampleSheetRow = (index) => {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-    
+
     // 鍵盤操作
     const handleKeyDown = (e) => {
       if (!isOpen) return;
-      
-      switch(e.key) {
+
+      switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setHighlightedIndex(prev => 
+          setHighlightedIndex(prev =>
             prev < filteredOptions.length - 1 ? prev + 1 : prev
           );
           break;
@@ -2371,15 +2918,15 @@ const removeSampleSheetRow = (index) => {
           break;
       }
     };
-    
+
     const handleSelect = (selectedValue) => {
       onChange(selectedValue);
       setIsOpen(false);
       setSearchTerm('');
     };
-    
+
     const displayValue = value ? options.find(opt => opt.value === value)?.value || value : '';
-    
+
     return (
       <div ref={dropdownRef} className="relative">
         {/* 顯示/搜尋輸入框 */}
@@ -2398,13 +2945,13 @@ const removeSampleSheetRow = (index) => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 pr-8"
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-            <ChevronRight 
-              size={16} 
+            <ChevronRight
+              size={16}
               className={`transform transition-transform ${isOpen ? 'rotate-90' : ''}`}
             />
           </div>
         </div>
-        
+
         {/* 下拉選項列表 */}
         {isOpen && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -2417,13 +2964,11 @@ const removeSampleSheetRow = (index) => {
                 <div
                   key={idx}
                   onClick={() => handleSelect(opt.value)}
-                  className={`px-3 py-2 cursor-pointer transition ${
-                    idx === highlightedIndex
-                      ? 'bg-blue-100'
-                      : 'hover:bg-blue-50'
-                  } ${
-                    opt.value === value ? 'bg-blue-50 font-semibold' : ''
-                  }`}
+                  className={`px-3 py-2 cursor-pointer transition ${idx === highlightedIndex
+                    ? 'bg-blue-100'
+                    : 'hover:bg-blue-50'
+                    } ${opt.value === value ? 'bg-blue-50 font-semibold' : ''
+                    }`}
                 >
                   <div className="text-sm font-medium text-gray-800">
                     {opt.value}
@@ -2441,12 +2986,12 @@ const removeSampleSheetRow = (index) => {
       </div>
     );
   };
-  
+
   // 🆕 渲染步驟0：快速帶入（簡化版）
   const renderStep0 = () => {
     const salesExists = formData.salesCode && salesCodes.find(s => s.code === formData.salesCode);
     const customerExists = formData.customerCode && customerCodes.find(c => c.code === formData.customerCode);
-    
+
     return (
       <div className="space-y-6">
         <div className="border-2 border-indigo-300 rounded-lg p-6 bg-gradient-to-br from-indigo-50 to-blue-50">
@@ -2469,7 +3014,7 @@ const removeSampleSheetRow = (index) => {
               placeholder="請輸入業務代碼"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            
+
             {formData.salesCode && salesExists && (
               <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-700">
@@ -2478,7 +3023,7 @@ const removeSampleSheetRow = (index) => {
                 </p>
               </div>
             )}
-            
+
             {formData.salesCode && !salesExists && (
               <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-700">
@@ -2500,7 +3045,7 @@ const removeSampleSheetRow = (index) => {
               placeholder="請輸入客戶代碼"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            
+
             {formData.customerCode && customerExists && (
               <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-700 mb-1">
@@ -2511,7 +3056,7 @@ const removeSampleSheetRow = (index) => {
                 </p>
               </div>
             )}
-            
+
             {formData.customerCode && !customerExists && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-700">
@@ -2636,7 +3181,7 @@ const removeSampleSheetRow = (index) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              聯絡電話 
+              聯絡電話
             </label>
             <input
               type="tel"
@@ -2741,7 +3286,7 @@ const removeSampleSheetRow = (index) => {
               <option>sFTP下載</option>
             </select>
           </div>
-          
+
           {formData.dataDeliveryMethod === '國網中心下載' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2757,7 +3302,7 @@ const removeSampleSheetRow = (index) => {
               />
             </div>
           )}
-          
+
           {formData.dataDeliveryMethod === 'HDD由專人遞送' && (
             <>
               <div>
@@ -2835,7 +3380,7 @@ const removeSampleSheetRow = (index) => {
               <p className="text-xs text-gray-500">標準處理時程</p>
             </div>
           </label>
-          
+
           <label className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition hover:bg-gray-100">
             <input
               type="radio"
@@ -2870,7 +3415,7 @@ const removeSampleSheetRow = (index) => {
             />
             <span className="font-medium text-gray-700">不需要</span>
           </label>
-          
+
           <label className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition hover:bg-gray-100">
             <input
               type="radio"
@@ -2885,7 +3430,7 @@ const removeSampleSheetRow = (index) => {
               <p className="text-xs text-gray-500">由我們寄回，運費另計</p>
             </div>
           </label>
-          
+
           <label className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition hover:bg-gray-100">
             <input
               type="radio"
@@ -2903,122 +3448,122 @@ const removeSampleSheetRow = (index) => {
         </div>
       </div>
 
-    {/* 🆕 常用組合快速選擇 */}
-    {/* 常用組合快速選擇 */}
-<div className="border-2 border-purple-300 rounded-lg p-6 bg-gradient-to-br from-purple-50 to-pink-50">
-  <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-    ⚡ 快速選擇常用組合
-  </h3>
-  
-  <div className="mb-4">
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-      選擇預設組合（選擇後將自動勾選對應服務類別）
-    </label>
-    <select
-      value={formData.selectedPackage}
-      onChange={(e) => handlePackageSelect(e.target.value)}
-      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-base"
-    >
-      <option value="">-- 常用組合可以幫助您更快挑選你需要的服務 --</option>
-      {safeCommonPackages.map((pkg) => (
-        <option key={pkg.id} value={pkg.id}>
-          {pkg.icon} {pkg.name}
-        </option>
-      ))}
-    </select>
-  </div>
-  
-  {/* 顯示選中組合的預覽 */}
-  {formData.selectedPackage && (
-    <div className="bg-white rounded-lg p-4 border-2 border-purple-200">
-      {(() => {
-        const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
-        
-        if (!pkg) {
-          return (
-            <div className="text-red-600 text-sm">
-              ⚠️ 找不到此組合配置
-            </div>
-          );
-        }
-        
-        return (
-          <>
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-semibold text-purple-800 text-base mb-1">
-                  {pkg.icon} {pkg.name}
-                </h4>
-                <p className="text-sm text-gray-600">{pkg.description}</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleClearPackage}
-                className="text-red-600 hover:text-red-800 text-sm flex items-center gap-1 px-3 py-1 rounded hover:bg-red-50 border border-red-300"
-              >
-                <X size={16} />
-                清除
-              </button>
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-700 mb-2">
-                📦 將自動勾選以下服務類別：
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(pkg.categories || []).map((cat, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                  >
-                    {cat}
-                  </span>
-                ))}
-              </div>
-              
-              {pkg.defaultServices && pkg.defaultServices.length > 0 && (
+      {/* 🆕 常用組合快速選擇 */}
+      {/* 常用組合快速選擇 */}
+      <div className="border-2 border-purple-300 rounded-lg p-6 bg-gradient-to-br from-purple-50 to-pink-50">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+          ⚡ 快速選擇常用組合
+        </h3>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            選擇預設組合（選擇後將自動勾選對應服務類別）
+          </label>
+          <select
+            value={formData.selectedPackage}
+            onChange={(e) => handlePackageSelect(e.target.value)}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-base"
+          >
+            <option value="">-- 常用組合可以幫助您更快挑選你需要的服務 --</option>
+            {safeCommonPackages.map((pkg) => (
+              <option key={pkg.id} value={pkg.id}>
+                {pkg.icon} {pkg.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 顯示選中組合的預覽 */}
+        {formData.selectedPackage && (
+          <div className="bg-white rounded-lg p-4 border-2 border-purple-200">
+            {(() => {
+              const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
+
+              if (!pkg) {
+                return (
+                  <div className="text-red-600 text-sm">
+                    ⚠️ 找不到此組合配置
+                  </div>
+                );
+              }
+
+              return (
                 <>
-                  <p className="text-xs font-semibold text-gray-700 mt-4 mb-2">
-                    🛠️ 預設服務品項（進入下一步可調整數量）：
-                  </p>
-                  {pkg.defaultServices.map((svc, idx) => (
-                    <div key={idx} className="bg-purple-50 rounded p-2 text-xs">
-                      <span className="text-gray-600">{svc.category}</span>
-                      <div className="text-gray-800 mt-1">
-                        • {svc.service} <span className="text-purple-600 font-semibold">× {svc.defaultQuantity}</span>
-                      </div>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-purple-800 text-base mb-1">
+                        {pkg.icon} {pkg.name}
+                      </h4>
+                      <p className="text-sm text-gray-600">{pkg.description}</p>
                     </div>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={handleClearPackage}
+                      className="text-red-600 hover:text-red-800 text-sm flex items-center gap-1 px-3 py-1 rounded hover:bg-red-50 border border-red-300"
+                    >
+                      <X size={16} />
+                      清除
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">
+                      📦 將自動勾選以下服務類別：
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(pkg.categories || []).map((cat, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                        >
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+
+                    {pkg.defaultServices && pkg.defaultServices.length > 0 && (
+                      <>
+                        <p className="text-xs font-semibold text-gray-700 mt-4 mb-2">
+                          🛠️ 預設服務品項（進入下一步可調整數量）：
+                        </p>
+                        {pkg.defaultServices.map((svc, idx) => (
+                          <div key={idx} className="bg-purple-50 rounded p-2 text-xs">
+                            <span className="text-gray-600">{svc.category}</span>
+                            <div className="text-gray-800 mt-1">
+                              • {svc.service} <span className="text-purple-600 font-semibold">× {svc.defaultQuantity}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {pkg.recommendedSampleType && (
+                      <div className="mt-3 pt-3 border-t border-purple-200">
+                        <p className="text-xs text-gray-600">
+                          💡 建議樣品類型：
+                          <span className="font-semibold text-purple-700 ml-1">
+                            {pkg.recommendedSampleType}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </>
-              )}
-              
-              {pkg.recommendedSampleType && (
-                <div className="mt-3 pt-3 border-t border-purple-200">
-                  <p className="text-xs text-gray-600">
-                    💡 建議樣品類型：
-                    <span className="font-semibold text-purple-700 ml-1">
-                      {pkg.recommendedSampleType}
-                    </span>
-                  </p>
-                </div>
-              )}
-            </div>
-          </>
-        );
-      })()}
-    </div>
-  )}
-  
-  <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded text-sm text-gray-700">
-    <p className="font-semibold text-blue-800 mb-1">💡 使用說明</p>
-    <ul className="space-y-1 ml-4 text-xs">
-      <li>• 選擇常用組合後，系統會自動勾選對應的服務類別</li>
-      <li>• 進入 Step 2 後，會自動帶入預設的服務品項</li>
-      <li>• 您可以在 Step 2 調整每個品項的數量或新增其他服務</li>
-      <li>• 如果不想使用組合，可直接在下方手動勾選服務類別</li>
-    </ul>
-  </div>
-</div>
+              );
+            })()}
+          </div>
+        )}
+
+        <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded text-sm text-gray-700">
+          <p className="font-semibold text-blue-800 mb-1">💡 使用說明</p>
+          <ul className="space-y-1 ml-4 text-xs">
+            <li>• 選擇常用組合後，系統會自動勾選對應的服務類別</li>
+            <li>• 進入 Step 2 後，會自動帶入預設的服務品項</li>
+            <li>• 您可以在 Step 2 調整每個品項的數量或新增其他服務</li>
+            <li>• 如果不想使用組合，可直接在下方手動勾選服務類別</li>
+          </ul>
+        </div>
+      </div>
 
 
       {/* 服務類別勾選 */}
@@ -3028,17 +3573,16 @@ const removeSampleSheetRow = (index) => {
             <Check size={20} className="text-blue-600" />
             請勾選需要的服務類別 <span className="text-red-600">*</span>
           </h3>
-          
+
           {/* 🆕 一鍵清除按鈕 */}
           <button
             type="button"
             onClick={handleClearAllCategories}
             disabled={formData.selectedServiceCategories.length === 0}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
-              formData.selectedServiceCategories.length === 0
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${formData.selectedServiceCategories.length === 0
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md'
+              }`}
           >
             <RotateCcw size={16} />
             清除全部
@@ -3051,11 +3595,10 @@ const removeSampleSheetRow = (index) => {
           {availableServiceCategories.map((category) => (
             <label
               key={category.id}
-              className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
-                formData.selectedServiceCategories.includes(category.value)
-                  ? 'border-blue-500 bg-blue-100'
-                  : 'border-gray-300 bg-white hover:border-blue-300'
-              }`}
+              className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${formData.selectedServiceCategories.includes(category.value)
+                ? 'border-blue-500 bg-blue-100'
+                : 'border-gray-300 bg-white hover:border-blue-300'
+                }`}
             >
               <input
                 type="checkbox"
@@ -3083,675 +3626,1281 @@ const removeSampleSheetRow = (index) => {
 
   // 渲染步驟2：委託內容
   // 3️⃣ 修改後的 renderStep2
-// 修改 renderStep2 中的提示訊息
-const renderStep2 = () => {
-  const totalSequencing = calculateTotalSequencing();
-  const extractionType = getExtractionType();
-  
-  return (
-    <div className="space-y-6">
-      <div className="border-2 border-blue-300 rounded-lg p-6 bg-blue-50">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">委託內容</h3>
-        {/* 🆕 組合倍數調整區塊（只在使用組合時顯示） */}
-        {formData.selectedPackage && (
-          <div className="border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h4 className="font-semibold text-purple-800 mb-1 flex items-center gap-2">
-                  ⚡ 樣本數量
-                  {(() => {
-                    const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
-                    return pkg ? (
-                      <span className="text-sm font-normal text-gray-600">
-                        ({pkg.icon} {pkg.name})
-                      </span>
-                    ) : null;
-                  })()}
-                </h4>
-                <p className="text-xs text-gray-600">
-                  調整樣本數量會同步更新所有組合服務的數量（自行新增的服務不受影響）
-                </p>
-              </div>
-              
-              {/* 倍數輸入框 */}
-              <div className="flex items-center gap-3 ml-4">
-                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                  樣本數量：
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handlePackageMultiplierChange(formData.packageMultiplier - 1)}
-                    disabled={formData.packageMultiplier <= 1}
-                    className="w-8 h-8 rounded-lg border-2 border-purple-300 bg-white hover:bg-purple-50 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed flex items-center justify-center font-bold text-purple-600"
-                  >
-                    −
-                  </button>
-                  
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={formData.packageMultiplier}
-                    onChange={(e) => handlePackageMultiplierChange(e.target.value)}
-                    className="w-20 px-3 py-2 border-2 border-purple-300 rounded-lg text-center font-semibold text-purple-700 focus:ring-2 focus:ring-purple-500"
-                  />
-                  
-                  <button
-                    type="button"
-                    onClick={() => handlePackageMultiplierChange(formData.packageMultiplier + 1)}
-                    className="w-8 h-8 rounded-lg border-2 border-purple-300 bg-white hover:bg-purple-50 flex items-center justify-center font-bold text-purple-600"
-                  >
-                    +
-                  </button>
-                  
-                  <span className="text-sm text-gray-600 ml-2">倍</span>
+  // 修改 renderStep2 中的提示訊息
+  const renderStep2 = () => {
+    const totalSequencing = calculateTotalSequencing();
+    const extractionType = getExtractionType();
+
+    return (
+      <div className="space-y-6">
+        <div className="border-2 border-blue-300 rounded-lg p-6 bg-blue-50">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">委託內容</h3>
+          {/* 🆕 組合倍數調整區塊（只在使用組合時顯示） */}
+          {formData.selectedPackage && (
+            <div className="border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-purple-800 mb-1 flex items-center gap-2">
+                    ⚡ 樣本數量
+                    {(() => {
+                      const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
+                      return pkg ? (
+                        <span className="text-sm font-normal text-gray-600">
+                          ({pkg.icon} {pkg.name})
+                        </span>
+                      ) : null;
+                    })()}
+                  </h4>
+                  <p className="text-xs text-gray-600">
+                    調整樣本數量會同步更新所有組合服務的數量（自行新增的服務不受影響）
+                  </p>
                 </div>
-              </div>
-            </div>
-            
-            {/* 顯示計算後的數量預覽 */}
-            {(() => {
-              const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
-              if (!pkg) return null;
-              
-              // return (
-              //   <div className="mt-3 pt-3 border-t border-purple-200">
-              //     <p className="text-xs font-semibold text-gray-700 mb-2">
-              //       📊 當前組合服務數量：
-              //     </p>
-              //     <div className="flex flex-wrap gap-2">
-              //       {pkg.defaultServices.map((svc, idx) => {
-              //         const actualQuantity = (parseInt(svc.defaultQuantity) || 1) * formData.packageMultiplier;
-              //         return (
-              //           <div key={idx} className="bg-white rounded px-3 py-1.5 text-xs border border-purple-200">
-              //             <span className="text-gray-600">{svc.category.replace(/\s*\([^)]*\)/, '')}</span>
-              //             <span className="mx-1.5">→</span>
-              //             <span className="font-semibold text-purple-700">
-              //               {actualQuantity}
-              //             </span>
-              //           </div>
-              //         );
-              //       })}
-              //     </div>
-              //   </div>
-              // );
-            })()}
-          </div>
-        )}
-        
-        {/* 🆕 顯示萃取類型提示 */}
-        {extractionType && (
-          <div className={`mb-4 p-3 rounded-lg border-2 ${
-            extractionType === 'DNA' 
-              ? 'bg-blue-50 border-blue-300' 
-              : extractionType === 'RNA'
-              ? 'bg-green-50 border-green-300'
-              : 'bg-yellow-50 border-yellow-300'
-          }`}>
-            <p className="text-sm font-medium">
-              {extractionType === 'DNA' && (
-                <>
-                  🧬 已選擇 <span className="font-bold">DNA 萃取</span>，建庫服務將只顯示 DNA 相關選項（排除 L-RN 開頭）
-                </>
-              )}
-              {extractionType === 'RNA' && (
-                <>
-                  🧬 已選擇 <span className="font-bold">RNA 萃取</span>（如 Q-ER03），建庫服務將只顯示 <span className="font-bold">L-RN 開頭</span>的 RNA 相關選項
-                </>
-              )}
-              {extractionType === 'MIXED' && (
-                <>
-                  🧬 已選擇 <span className="font-bold">DNA 和 RNA 萃取</span>，建庫服務顯示全部選項
-                </>
-              )}
-            </p>
-          </div>
-        )}
-        
-        <p className="text-sm text-gray-600 mb-6">
-          📋 請填寫您在步驟1選擇的各項服務類別詳細資訊
-        </p>
-        
-        {formData.serviceItems.map((item, index) => (
-          <div key={index} className="mb-6 p-4 bg-white rounded-lg border-2 border-gray-200">
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-blue-700">
-                  {item.category}
-                </h4>
-              </div>
-              <div className="h-px bg-gray-200 mb-4"></div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700">
-                    服務品項與數量 <span className="text-red-600">*</span>
+
+                {/* 倍數輸入框 */}
+                <div className="flex items-center gap-3 ml-4">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    樣本數量：
                   </label>
-                  {canAddServiceForCategory(item.category) && (
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => addService(index)}
-                      disabled={isLocked}
-                      className={`text-sm flex items-center gap-1 px-3 py-1 rounded transition
-                        ${isLocked
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'}`}
+                      onClick={() => handlePackageMultiplierChange(formData.packageMultiplier - 1)}
+                      disabled={formData.packageMultiplier <= 1}
+                      className="w-8 h-8 rounded-lg border-2 border-purple-300 bg-white hover:bg-purple-50 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed flex items-center justify-center font-bold text-purple-600"
                     >
-                      <Plus size={16} />
-                      新增品項
+                      −
                     </button>
-                  )}
+
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={formData.packageMultiplier}
+                      onChange={(e) => handlePackageMultiplierChange(e.target.value)}
+                      className="w-20 px-3 py-2 border-2 border-purple-300 rounded-lg text-center font-semibold text-purple-700 focus:ring-2 focus:ring-purple-500"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => handlePackageMultiplierChange(formData.packageMultiplier + 1)}
+                      className="w-8 h-8 rounded-lg border-2 border-purple-300 bg-white hover:bg-purple-50 flex items-center justify-center font-bold text-purple-600"
+                    >
+                      +
+                    </button>
+
+                    <span className="text-sm text-gray-600 ml-2">倍</span>
+                  </div>
                 </div>
-                
-                {item.services.map((serviceItem, serviceIndex) => {
-                  // 🆕 動態獲取當前可用的服務選項
-                  const availableOptions = item.category === '建庫服務 (L)' 
-                    ? getFilteredLibraryServices() 
-                    : getServiceOptionsForCategory(item.category) || [];  // ✅ 正確：函數調用
-                  
-                  // 🆕 檢查當前選擇的服務是否還在可用列表中
-                  const isCurrentServiceAvailable = availableOptions.some(
-                    opt => opt.value === serviceItem.service
-                  );
-                  
-                  return (
-                    <div key={serviceIndex} className="space-y-2">
-                      <div className="flex gap-2 items-start bg-gray-50 p-3 rounded border border-gray-200">
-                        <div className="flex-1">
-  {/* 🆕 使用可搜尋的下拉選單 */}
-  <SearchableSelect
-    value={serviceItem.service}
-    options={[
-      { value: '', description: '請選擇服務品項' },
-      ...availableOptions
-    ]}
-    onChange={(value) => handleServiceChange(index, serviceIndex, 'service', value)}
-    placeholder="請輸入或選擇服務品項"
-    itemIndex={index}
-    serviceIndex={serviceIndex}
-  />
-                          
-                          {/* 🆕 如果之前選擇的服務現在不可用，顯示警告 */}
-                          {serviceItem.service && !isCurrentServiceAvailable && (
-                            <p className="text-xs text-red-600 mt-1">
-                              ⚠️ 此服務與目前選擇的萃取類型不符，請重新選擇
-                            </p>
+              </div>
+
+              {/* 顯示計算後的數量預覽 */}
+              {(() => {
+                const pkg = safeCommonPackages.find(p => p.id === formData.selectedPackage);
+                if (!pkg) return null;
+
+                // return (
+                //   <div className="mt-3 pt-3 border-t border-purple-200">
+                //     <p className="text-xs font-semibold text-gray-700 mb-2">
+                //       📊 當前組合服務數量：
+                //     </p>
+                //     <div className="flex flex-wrap gap-2">
+                //       {pkg.defaultServices.map((svc, idx) => {
+                //         const actualQuantity = (parseInt(svc.defaultQuantity) || 1) * formData.packageMultiplier;
+                //         return (
+                //           <div key={idx} className="bg-white rounded px-3 py-1.5 text-xs border border-purple-200">
+                //             <span className="text-gray-600">{svc.category.replace(/\s*\([^)]*\)/, '')}</span>
+                //             <span className="mx-1.5">→</span>
+                //             <span className="font-semibold text-purple-700">
+                //               {actualQuantity}
+                //             </span>
+                //           </div>
+                //         );
+                //       })}
+                //     </div>
+                //   </div>
+                // );
+              })()}
+            </div>
+          )}
+
+          {/* 🆕 顯示萃取類型提示 */}
+          {extractionType && (
+            <div className={`mb-4 p-3 rounded-lg border-2 ${extractionType === 'DNA'
+              ? 'bg-blue-50 border-blue-300'
+              : extractionType === 'RNA'
+                ? 'bg-green-50 border-green-300'
+                : 'bg-yellow-50 border-yellow-300'
+              }`}>
+              <p className="text-sm font-medium">
+                {extractionType === 'DNA' && (
+                  <>
+                    🧬 已選擇 <span className="font-bold">DNA 萃取</span>，建庫服務將只顯示 DNA 相關選項（排除 L-RN 開頭）
+                  </>
+                )}
+                {extractionType === 'RNA' && (
+                  <>
+                    🧬 已選擇 <span className="font-bold">RNA 萃取</span>（如 Q-ER03），建庫服務將只顯示 <span className="font-bold">L-RN 開頭</span>的 RNA 相關選項
+                  </>
+                )}
+                {extractionType === 'MIXED' && (
+                  <>
+                    🧬 已選擇 <span className="font-bold">DNA 和 RNA 萃取</span>，建庫服務顯示全部選項
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-600 mb-6">
+            📋 請填寫您在步驟1選擇的各項服務類別詳細資訊
+          </p>
+
+          {formData.serviceItems.map((item, index) => (
+            <div key={index} className="mb-6 p-4 bg-white rounded-lg border-2 border-gray-200">
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-lg font-semibold text-blue-700">
+                    {item.category}
+                  </h4>
+                </div>
+                <div className="h-px bg-gray-200 mb-4"></div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">
+                      服務品項與數量 <span className="text-red-600">*</span>
+                    </label>
+                    {canAddServiceForCategory(item.category) && (
+                      <button
+                        type="button"
+                        onClick={() => addService(index)}
+                        disabled={isLocked}
+                        className={`text-sm flex items-center gap-1 px-3 py-1 rounded transition
+                        ${isLocked
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'}`}
+                      >
+                        <Plus size={16} />
+                        新增品項
+                      </button>
+                    )}
+                  </div>
+
+                  {item.services.map((serviceItem, serviceIndex) => {
+                    // 🆕 動態獲取當前可用的服務選項
+                    const availableOptions = item.category === '建庫服務 (L)'
+                      ? getFilteredLibraryServices()
+                      : getServiceOptionsForCategory(item.category) || [];  // ✅ 正確：函數調用
+
+                    // 🆕 檢查當前選擇的服務是否還在可用列表中
+                    const isCurrentServiceAvailable = availableOptions.some(
+                      opt => opt.value === serviceItem.service
+                    );
+
+                    return (
+                      <div key={serviceIndex} className="space-y-2">
+                        <div className="flex gap-2 items-start bg-gray-50 p-3 rounded border border-gray-200">
+                          <div className="flex-1">
+                            {/* 🆕 使用可搜尋的下拉選單 */}
+                            <SearchableSelect
+                              value={serviceItem.service}
+                              options={[
+                                { value: '', description: '請選擇服務品項' },
+                                ...availableOptions
+                              ]}
+                              onChange={(value) => handleServiceChange(index, serviceIndex, 'service', value)}
+                              placeholder="請輸入或選擇服務品項"
+                              itemIndex={index}
+                              serviceIndex={serviceIndex}
+                            />
+
+                            {/* 🆕 如果之前選擇的服務現在不可用，顯示警告 */}
+                            {serviceItem.service && !isCurrentServiceAvailable && (
+                              <p className="text-xs text-red-600 mt-1">
+                                ⚠️ 此服務與目前選擇的萃取類型不符，請重新選擇
+                              </p>
+                            )}
+                          </div>
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              value={serviceItem.quantity}
+                              onChange={(e) => handleServiceChange(index, serviceIndex, 'quantity', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                              placeholder="數量"
+                              min="1"
+                            />
+                          </div>
+                          {item.services.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeService(index, serviceIndex)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded transition"
+                            >
+                              <X size={18} />
+                            </button>
                           )}
                         </div>
-                        <div className="w-32">
-                          <input
-                            type="number"
-                            value={serviceItem.quantity}
-                            onChange={(e) => handleServiceChange(index, serviceIndex, 'quantity', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                            placeholder="數量"
-                            min="1"
-                          />
-                        </div>
-                        {item.services.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeService(index, serviceIndex)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded transition"
-                          >
-                            <X size={18} />
-                          </button>
+
+                        {/* 顯示選中服務的說明 */}
+                        {serviceItem.service && isCurrentServiceAvailable && (
+                          <div className="ml-3 mt-2">
+                            {(() => {
+                              const desc = availableOptions.find(opt => opt.value === serviceItem.service)?.description || '無說明';
+                              const lines = desc.split('\n').filter(line => line.trim());
+
+                              return (
+                                <div className="px-3 py-2 bg-blue-50 border-l-4 border-blue-400 rounded-r text-sm">
+                                  <span className="font-semibold text-blue-700 block mb-2">說明：</span>
+                                  <div className="space-y-1.5 text-gray-700">
+                                    {lines.map((line, idx) => {
+                                      // 檢查是否為列表項（以數字或符號開頭）
+                                      const isListItem = /^[\d]+[.)]\s*/.test(line) || /^[•\-*]\s*/.test(line);
+
+                                      if (isListItem) {
+                                        return (
+                                          <div key={idx} className="flex items-start gap-2 pl-2">
+                                            <span className="text-blue-500 flex-shrink-0">•</span>
+                                            <span className="flex-1">{line.replace(/^[\d]+[.)]\s*|^[•\-*]\s*/, '')}</span>
+                                          </div>
+                                        );
+                                      }
+
+                                      return <div key={idx} className={idx === 0 ? 'font-medium' : ''}>{line}</div>;
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 顯示單項定序量 */}
+                            {item.category === '定序服務 (S)' && sequencingDataMap[serviceItem.service] && (
+                              <div className="mt-2 px-3 py-2 bg-green-50 border-l-4 border-green-400 rounded-r text-sm">
+                                <span className="font-semibold text-green-700">定序量：</span>
+                                <span className="text-green-600 ml-2">
+                                  {/* {sequencingDataMap[serviceItem.service]} GB/個 × {serviceItem.quantity || 0} =  */}
+                                  <span className="font-bold ml-1">
+                                    {(sequencingDataMap[serviceItem.service] * (parseInt(serviceItem.quantity) || 0)).toLocaleString()} GB
+                                  </span>
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                      
-                      {/* 顯示選中服務的說明 */}
-                      {serviceItem.service && isCurrentServiceAvailable && (
-                        <div className="ml-3 mt-2">
-                          {(() => {
-                            const desc = availableOptions.find(opt => opt.value === serviceItem.service)?.description || '無說明';
-                            const lines = desc.split('\n').filter(line => line.trim());
-                            
-                            return (
-                              <div className="px-3 py-2 bg-blue-50 border-l-4 border-blue-400 rounded-r text-sm">
-                                <span className="font-semibold text-blue-700 block mb-2">說明：</span>
-                                <div className="space-y-1.5 text-gray-700">
-                                  {lines.map((line, idx) => {
-                                    // 檢查是否為列表項（以數字或符號開頭）
-                                    const isListItem = /^[\d]+[.)]\s*/.test(line) || /^[•\-*]\s*/.test(line);
-                                    
-                                    if (isListItem) {
-                                      return (
-                                        <div key={idx} className="flex items-start gap-2 pl-2">
-                                          <span className="text-blue-500 flex-shrink-0">•</span>
-                                          <span className="flex-1">{line.replace(/^[\d]+[.)]\s*|^[•\-*]\s*/, '')}</span>
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    return <div key={idx} className={idx === 0 ? 'font-medium' : ''}>{line}</div>;
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          
-                          {/* 顯示單項定序量 */}
-                          {item.category === '定序服務 (S)' && sequencingDataMap[serviceItem.service] && (
-                            <div className="mt-2 px-3 py-2 bg-green-50 border-l-4 border-green-400 rounded-r text-sm">
-                              <span className="font-semibold text-green-700">定序量：</span>
-                              <span className="text-green-600 ml-2">
-                                {/* {sequencingDataMap[serviceItem.service]} GB/個 × {serviceItem.quantity || 0} =  */}
-                                <span className="font-bold ml-1">
-                                  {(sequencingDataMap[serviceItem.service] * (parseInt(serviceItem.quantity) || 0)).toLocaleString()} GB
-                                </span>
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        
-        {/* 定序量總計顯示 */}
-        {totalSequencing > 0 && (
-          <div className="mt-6 border-2 border-green-400 rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                  📊 總定序量
+          ))}
+
+          {/* 定序量總計顯示 */}
+          {totalSequencing > 0 && (
+            <div className="mt-6 border-2 border-green-400 rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                    📊 總定序量
+                  </span>
+                  <p className="text-xs text-gray-600 mt-1">
+                    根據您選擇的定序服務自動計算
+                  </p>
+                </div>
+                <span className="text-3xl font-bold text-green-600">
+                  {totalSequencing.toLocaleString()} GB
                 </span>
-                <p className="text-xs text-gray-600 mt-1">
-                  根據您選擇的定序服務自動計算
-                </p>
               </div>
-              <span className="text-3xl font-bold text-green-600">
-                {totalSequencing.toLocaleString()} GB
-              </span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   // 渲染步驟3：送測樣品資訊 
   const renderStep3 = () => {
-  const totalSequencing = calculateTotalSequencing(); // Step2 的總定序量
-  const expectedSequencing = calculateExpectedSequencing(); // Step3 樣本的預期定序量
-  const isOverLimit = expectedSequencing > totalSequencing; // 是否超過
-  // 🆕 獲取允許的樣品類型
-  // 🆕 檢查是否為 AP 套組
-  // 🆕 檢查是否為 AP 套組
-  const isAPPackage = formData.selectedServiceCategories.includes('套組產品 (AP)');
-  // 🆕 計算 AP 套組資訊（含數量）
-  const apPackageInfo = isAPPackage ? (() => {
-    const apItem = formData.serviceItems.find(item => item.category === '套組產品 (AP)');
-    if (apItem && apItem.services[0].service) {
-      const quantity = parseInt(apItem.services[0].quantity) || 1;
-      const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
-      const config = apOptions.find(opt => opt.value === apItem.services[0].service);
-      
-      if (config) {
-        return {
-          ...config,
-          quantity: quantity,
-          totalSeqAmount: config.binding?.seqAmountGb 
-            ? config.binding.seqAmountGb * quantity 
-            : null
-        };
-      }
-    }
-    return null;
-  })() : null;
-  
-  // 🆕 獲取允許的樣品類型
-  const allowedSampleTypes = isAPPackage && apPackageInfo?.binding?.sampleType
-    ? [apPackageInfo.binding.sampleType]  // AP 套組：只允許指定的類型
-    : getAllowedSampleTypes();  // 一般服務：依原邏輯
-  
-  const restrictionMessage = isAPPackage 
-    ? `📦 此為套組產品，樣品類型固定為：${apPackageInfo?.binding?.sampleType || '未設定'}`
-    : getSampleTypeRestrictionMessage();
-  
-  return (
-    <div className="space-y-6">
-      <div className="border-2 border-green-300 rounded-lg p-6 bg-green-50">
-        <h3 className="text-xl font-bold text-gray-800 mb-6">送測樣品資訊</h3>
+    // 🆕 定義變數供 JSX 使用
+    const isOnlyAnalysis = formData.selectedServiceCategories.length === 1 && formData.selectedServiceCategories[0] === '分析服務 (A)';
+    const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+    const isRNAseqAnalysis = analysisItem?.services.some(s => s.service && s.service.toLowerCase().includes('rnaseq'));
 
-        {/* 🆕 AP 套組資訊提示 */}
-        {isAPPackage && apPackageInfo && (
-          <div className="mb-6 border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50">
-            <h4 className="font-semibold text-purple-800 mb-2 flex items-center gap-2">
-              📦 套組產品資訊
-            </h4>
-            <div className="space-y-2 text-sm">
-              <div className="bg-white p-3 rounded">
-                <span className="text-gray-600 font-medium">套組名稱：</span>
-                <span className="text-purple-700 font-bold ml-2">{apPackageInfo.value}</span>
+    const totalSequencing = calculateTotalSequencing(); // Step2 的總定序量
+    const expectedSequencing = calculateExpectedSequencing(); // Step3 樣本的預期定序量
+    const isOverLimit = expectedSequencing > totalSequencing; // 是否超過
+    // 🆕 獲取允許的樣品類型
+    // 🆕 檢查是否為 AP 套組
+    const isAPPackage = formData.selectedServiceCategories.includes('套組產品 (AP)');
+    // 🆕 計算 AP 套組資訊（含數量）
+    const apPackageInfo = isAPPackage ? (() => {
+      const apItem = formData.serviceItems.find(item => item.category === '套組產品 (AP)');
+      if (apItem && apItem.services[0].service) {
+        const quantity = parseInt(apItem.services[0].quantity) || 1;
+        const apOptions = serviceOptionsByCategory['套組產品 (AP)'] || [];
+        const config = apOptions.find(opt => opt.value === apItem.services[0].service);
+
+        if (config) {
+          return {
+            ...config,
+            quantity: quantity,
+            totalSeqAmount: config.binding?.seqAmountGb
+              ? config.binding.seqAmountGb * quantity
+              : null
+          };
+        }
+      }
+      return null;
+    })() : null;
+
+    // 🆕 獲取允許的樣品類型
+    const allowedSampleTypes = isAPPackage && apPackageInfo?.binding?.sampleType
+      ? [apPackageInfo.binding.sampleType]  // AP 套組：只允許指定的類型
+      : getAllowedSampleTypes();  // 一般服務：依原邏輯
+
+    const restrictionMessage = isAPPackage
+      ? `📦 此為套組產品，樣品類型固定為：${apPackageInfo?.binding?.sampleType || '未設定'}`
+      : getSampleTypeRestrictionMessage();
+
+    return (
+      <div className="space-y-6">
+        <div className="border-2 border-green-300 rounded-lg p-6 bg-green-50">
+          <h3 className="text-xl font-bold text-gray-800 mb-6">送測樣品資訊</h3>
+
+          {/* 🆕 AP 套組資訊提示 */}
+          {isAPPackage && apPackageInfo && (
+            <div className="mb-6 border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50">
+              <h4 className="font-semibold text-purple-800 mb-2 flex items-center gap-2">
+                📦 套組產品資訊
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="bg-white p-3 rounded">
+                  <span className="text-gray-600 font-medium">套組名稱：</span>
+                  <span className="text-purple-700 font-bold ml-2">{apPackageInfo.value}</span>
+                </div>
+                {apPackageInfo.binding && (
+                  <>
+                    {apPackageInfo.binding.sampleType && (
+                      <div className="bg-white p-3 rounded">
+                        <span className="text-gray-600 font-medium">套組樣品類型：</span>
+                        <span className="text-blue-700 font-bold ml-2">{apPackageInfo.binding.sampleType}</span>
+                      </div>
+                    )}
+                    {apPackageInfo.binding.seqAmountGb && (
+                      <div className="bg-white p-3 rounded">
+                        <span className="text-gray-600 font-medium">定序量：</span>
+                        <span className="text-green-700 font-bold ml-2">{apPackageInfo.binding.seqAmountGb} GB/樣本</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              {apPackageInfo.binding && (
-                <>
-                  {apPackageInfo.binding.sampleType && (
-                    <div className="bg-white p-3 rounded">
-                      <span className="text-gray-600 font-medium">套組樣品類型：</span>
-                      <span className="text-blue-700 font-bold ml-2">{apPackageInfo.binding.sampleType}</span>
-                    </div>
-                  )}
-                  {apPackageInfo.binding.seqAmountGb && (
-                    <div className="bg-white p-3 rounded">
-                      <span className="text-gray-600 font-medium">定序量：</span>
-                      <span className="text-green-700 font-bold ml-2">{apPackageInfo.binding.seqAmountGb} GB/樣本</span>
-                    </div>
-                  )}
-                </>
+            </div>
+          )}
+
+          {/* 🆕 定序量比對顯示（放在最上方） */}
+          {totalSequencing > 0 && formData.sampleType !== '無送樣' && (
+            <div className={`mb-6 border-2 rounded-lg p-4 ${isOverLimit
+              ? 'bg-red-50 border-red-400'
+              : expectedSequencing > 0
+                ? 'bg-green-50 border-green-400'
+                : 'bg-gray-50 border-gray-300'
+              }`}>
+              <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                📊 定序量檢查
+              </h4>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-gray-600 mb-1">委託定序量（Step2）</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {totalSequencing.toLocaleString()} GB
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-gray-600 mb-1">樣本預期定序量</div>
+                  <div className={`text-2xl font-bold ${isOverLimit ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                    {expectedSequencing.toLocaleString()} GB
+                  </div>
+                </div>
+              </div>
+
+              {/* 狀態提示 */}
+              {expectedSequencing === 0 ? (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded text-sm text-yellow-800">
+                  ⚠️ 尚未填寫樣本的預期定序量
+                </div>
+              ) : isOverLimit ? (
+                <div className="mt-3 p-3 bg-red-100 border border-red-400 rounded text-sm">
+                  <div className="font-semibold text-red-800 mb-1">
+                    ❌ 預期定序量超過委託量！
+                  </div>
+                  <div className="text-red-700">
+                    超出 <span className="font-bold">{(expectedSequencing - totalSequencing).toLocaleString()} GB</span>
+                    ，請調整樣本預期定序量或增加 Step2 的定序服務數量。
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 p-3 bg-green-100 border border-green-400 rounded text-sm">
+                  <div className="font-semibold text-green-800 mb-1">
+                    ✅ 定序量配置正常
+                  </div>
+                  <div className="text-green-700">
+                    剩餘 <span className="font-bold">{(totalSequencing - expectedSequencing).toLocaleString()} GB</span> 可用
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 🆕 定序量比對顯示（放在最上方） */}
-        {totalSequencing > 0 && formData.sampleType !== '無送樣' && (
-          <div className={`mb-6 border-2 rounded-lg p-4 ${
-            isOverLimit 
-              ? 'bg-red-50 border-red-400' 
-              : expectedSequencing > 0 
-              ? 'bg-green-50 border-green-400' 
-              : 'bg-gray-50 border-gray-300'
-          }`}>
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              📊 定序量檢查
-            </h4>
-            
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-white p-3 rounded border">
-                <div className="text-gray-600 mb-1">委託定序量（Step2）</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {totalSequencing.toLocaleString()} GB
-                </div>
-              </div>
-              
-              <div className="bg-white p-3 rounded border">
-                <div className="text-gray-600 mb-1">樣本預期定序量</div>
-                <div className={`text-2xl font-bold ${
-                  isOverLimit ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {expectedSequencing.toLocaleString()} GB
-                </div>
-              </div>
-            </div>
-            
-            {/* 狀態提示 */}
-            {expectedSequencing === 0 ? (
-              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded text-sm text-yellow-800">
-                ⚠️ 尚未填寫樣本的預期定序量
-              </div>
-            ) : isOverLimit ? (
-              <div className="mt-3 p-3 bg-red-100 border border-red-400 rounded text-sm">
-                <div className="font-semibold text-red-800 mb-1">
-                  ❌ 預期定序量超過委託量！
-                </div>
-                <div className="text-red-700">
-                  超出 <span className="font-bold">{(expectedSequencing - totalSequencing).toLocaleString()} GB</span>
-                  ，請調整樣本預期定序量或增加 Step2 的定序服務數量。
-                </div>
-              </div>
-            ) : (
-              <div className="mt-3 p-3 bg-green-100 border border-green-400 rounded text-sm">
-                <div className="font-semibold text-green-800 mb-1">
-                  ✅ 定序量配置正常
-                </div>
-                <div className="text-green-700">
-                  剩餘 <span className="font-bold">{(totalSequencing - expectedSequencing).toLocaleString()} GB</span> 可用
-                </div>
-              </div>
-            )}
+          {/* 原有的樣本資訊 */}
+          <div className="flex items-center justify-between mb-3">
+            <h5 className="font-semibold text-gray-700">樣本資訊</h5>
           </div>
-        )}
-        
-        {/* 原有的樣本資訊 */}
-        <div className="flex items-center justify-between mb-3">
-          <h5 className="font-semibold text-gray-700">樣本資訊</h5>
-        </div>        
-        
-        {/* 🆕 顯示樣品類型限制提示 */}
-        {/* {restrictionMessage && (
+
+          {/* 🆕 顯示樣品類型限制提示 */}
+          {/* {restrictionMessage && (
           <div className="mb-4 p-3 bg-blue-50 border-2 border-blue-300 rounded-lg">
             <p className="text-sm text-blue-800 font-medium">
               {restrictionMessage}
             </p>
           </div>
         )} */}
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            樣品類型 <span className="text-red-600">*</span>
-          </label>
-          <select
-            name="sampleType"
-            value={formData.sampleType}
-            onChange={(e) => {
-              const newValue = e.target.value;
-              // 🆕 檢查是否為允許的選項
-              if (!allowedSampleTypes.includes(newValue)) {
-                setMessage('❌ 此樣品類型不符合您選擇的服務類別');
-                setTimeout(() => setMessage(''), 3000);
-                return;
-              }
-              handleInputChange(e);
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-          >
-            {/* 🆕 只顯示允許的選項 */}
-            {allowedSampleTypes.map(type => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          
-          {/* 🆕 當選擇的類型不被允許時顯示警告 */}
-          {formData.sampleType && !allowedSampleTypes.includes(formData.sampleType) && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-300 rounded text-sm text-red-700">
-              ⚠️ 目前選擇的樣品類型「{formData.sampleType}」與您的服務類別不符，請重新選擇
-            </div>
-          )}
-          
-          {/* 當選擇「其他」時顯示輸入框 */}
-          {formData.sampleType === '其他' && (
-            <input
-              type="text"
-              name="sampleTypeOther"
-              value={formData.sampleTypeOther}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
-              placeholder="請說明樣品類型"
-            />
-          )}
-        </div>
-        
-        {/* Library 送件資訊 */}
-        {formData.sampleType === 'Library' && (
-          <div className="col-span-2 mt-4 border-2 border-blue-300 rounded-lg p-6 bg-blue-50">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-lg font-bold text-gray-800">Library 送件資訊</h4>
-              <div className="flex gap-2">
-                <input
-                  ref={excelUploadRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleExcelUpload}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={downloadTemplate}
-                  className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-3 py-2 rounded hover:bg-green-50 border border-green-300"
-                >
-                  <Download size={14} />
-                  下載 Excel 範本
-                </button>
-                <button
-                  type="button"
-                  onClick={() => excelUploadRef.current?.click()}
-                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-3 py-2 rounded hover:bg-blue-50 border border-blue-300"
-                >
-                  <Upload size={14} />
-                  上傳 Excel
-                </button>
-              </div>
-            </div>
-          
-            {/* 🆕 拖拉上傳區域 */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`mb-4 p-43 border-2 border-dashed rounded-lg transition-all ${
-                isDragging 
-                  ? 'border-blue-500 bg-blue-100 scale-105' 
-                  : 'border-blue-300 bg-white hover:border-blue-400 hover:bg-blue-50'
-              }`}
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              樣品類型 <span className="text-red-600">*</span>
+            </label>
+            <select
+              name="sampleType"
+              value={formData.sampleType}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                // 🆕 檢查是否為允許的選項
+                if (!allowedSampleTypes.includes(newValue)) {
+                  setMessage('❌ 此樣品類型不符合您選擇的服務類別');
+                  setTimeout(() => setMessage(''), 3000);
+                  return;
+                }
+                handleInputChange(e);
+              }}
+              disabled={isOnlyAnalysis && isRNAseqAnalysis}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isOnlyAnalysis && isRNAseqAnalysis ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             >
-              <div className="text-center">
-                <Upload size={48} className={`mx-auto mb-2 ${isDragging ? 'text-blue-600' : 'text-blue-400'}`} />
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  {isDragging ? '放開以上傳檔案' : '拖曳 Excel 檔案到這裡'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  或點擊上方「上傳 Excel」按鈕選擇檔案
-                </p>
-                <p className="text-xs text-gray-400 mt-2">
-                  支援格式：.xlsx, .xls
-                </p>
+              {/* 🆕 只顯示允許的選項 */}
+              {allowedSampleTypes.map(type => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            {/* 🆕 RNAseq 分析限制提示 */}
+            {isOnlyAnalysis && isRNAseqAnalysis && (
+              <p className="text-xs text-orange-600 mt-1">
+                📌 RNAseq 純分析服務，樣品類型自動選擇「其他」
+              </p>
+            )}
+
+            {/* 🆕 當選擇的類型不被允許時顯示警告 */}
+            {formData.sampleType && !allowedSampleTypes.includes(formData.sampleType) && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-300 rounded text-sm text-red-700">
+                ⚠️ 目前選擇的樣品類型「{formData.sampleType}」與您的服務類別不符，請重新選擇
               </div>
-    </div>            
-            {/* 濃度測定方式 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                濃度測定方式 <span className="text-red-600">*</span>
-              </label>
-              <div className="flex gap-3">
-                <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-blue-100">
-                  <input
-                    type="radio"
-                    name="libraryConcMethod"
-                    value="Qubit"
-                    checked={formData.libraryInfo.concMethod === 'Qubit'}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      libraryInfo: { ...prev.libraryInfo, concMethod: e.target.value }
-                    }))}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm font-medium">Qubit</span>
-                </label>
-                
-                <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-blue-100">
-                  <input
-                    type="radio"
-                    name="libraryConcMethod"
-                    value="qPCR"
-                    checked={formData.libraryInfo.concMethod === 'qPCR'}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      libraryInfo: { ...prev.libraryInfo, concMethod: e.target.value }
-                    }))}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm font-medium">qPCR</span>
-                </label>
-                
-                <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-blue-100">
-                  <input
-                    type="radio"
-                    name="libraryConcMethod"
-                    value="PicoGreen"
-                    checked={formData.libraryInfo.concMethod === 'PicoGreen'}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      libraryInfo: { ...prev.libraryInfo, concMethod: e.target.value }
-                    }))}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm font-medium">PicoGreen</span>
-                </label>
-              </div>
-            </div>
-            
-            <div className="mb-4 text-xs text-gray-600 bg-blue-50 p-2 rounded border border-blue-200">
-              📌 使用說明：
-              <br/>• 點擊「下載 Excel 範本」取得包含兩個工作表的範本檔案
-              <br/>• 在範本中填寫 Sample Sheet 和 Library Sample Sheet 資料
-              <br/>• 點擊「上傳 Excel」自動匯入兩個表格的資料
-              <br/>• 也可以使用各表格上的「貼上資料」功能單獨匯入
-            </div>
-            
-            {/* Sample Sheet */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h5 className="font-semibold text-gray-700">Sample Sheet</h5>
+            )}
+
+            {/* 當選擇「其他」時顯示輸入框 */}
+            {formData.sampleType === '其他' && (
+              <input
+                type="text"
+                name="sampleTypeOther"
+                value={formData.sampleTypeOther}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                placeholder="請說明樣品類型"
+              />
+            )}
+          </div>
+
+          {/* Library 送件資訊 */}
+          {formData.sampleType === 'Library' && (
+            <div className="col-span-2 mt-4 border-2 border-blue-300 rounded-lg p-6 bg-blue-50">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-gray-800">Library 送件資訊</h4>
                 <div className="flex gap-2">
+                  <input
+                    ref={excelUploadRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleExcelUpload}
+                    className="hidden"
+                  />
                   <button
                     type="button"
-                    onClick={clearSampleSheet}
-                    className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                    onClick={downloadTemplate}
+                    className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-3 py-2 rounded hover:bg-green-50 border border-green-300"
                   >
-                    <RotateCcw size={14} />
-                    清空
+                    <Download size={14} />
+                    下載 Excel 範本
                   </button>
                   <button
                     type="button"
-                    onClick={addLibrarySampleSheetRow}
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                    onClick={() => excelUploadRef.current?.click()}
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-3 py-2 rounded hover:bg-blue-50 border border-blue-300"
                   >
-                    <Plus size={14} />
-                    新增樣本
+                    <Upload size={14} />
+                    上傳 Excel
                   </button>
                 </div>
               </div>
-              
-              <div className="mb-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
-                💡 提示：
-                <br/>• 複製 Excel 資料前，請先確認沒有合併的儲存格
-                <br/>• 從 Sample_Name 欄位開始複製（不含序號和標題）
-                <br/>• Library 欄位可輸入或從下拉選單選擇（建議來自 Sample Sheet 的 Sample Name）
-                <br/>• 複製貼上時 Library 欄位也會自動填入
-                <br/>• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+
+              {/* 🆕 拖拉上傳區域 */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`mb-4 p-43 border-2 border-dashed rounded-lg transition-all ${isDragging
+                  ? 'border-blue-500 bg-blue-100 scale-105'
+                  : 'border-blue-300 bg-white hover:border-blue-400 hover:bg-blue-50'
+                  }`}
+              >
+                <div className="text-center">
+                  <Upload size={48} className={`mx-auto mb-2 ${isDragging ? 'text-blue-600' : 'text-blue-400'}`} />
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    {isDragging ? '放開以上傳檔案' : '拖曳 Excel 檔案到這裡'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    或點擊上方「上傳 Excel」按鈕選擇檔案
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    支援格式：.xlsx, .xls
+                  </p>
+                </div>
               </div>
-              
+              {/* 濃度測定方式 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  濃度測定方式 <span className="text-red-600">*</span>
+                </label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-blue-100">
+                    <input
+                      type="radio"
+                      name="libraryConcMethod"
+                      value="Qubit"
+                      checked={formData.libraryInfo.concMethod === 'Qubit'}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        libraryInfo: { ...prev.libraryInfo, concMethod: e.target.value }
+                      }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm font-medium">Qubit</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-blue-100">
+                    <input
+                      type="radio"
+                      name="libraryConcMethod"
+                      value="qPCR"
+                      checked={formData.libraryInfo.concMethod === 'qPCR'}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        libraryInfo: { ...prev.libraryInfo, concMethod: e.target.value }
+                      }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm font-medium">qPCR</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-blue-100">
+                    <input
+                      type="radio"
+                      name="libraryConcMethod"
+                      value="PicoGreen"
+                      checked={formData.libraryInfo.concMethod === 'PicoGreen'}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        libraryInfo: { ...prev.libraryInfo, concMethod: e.target.value }
+                      }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm font-medium">PicoGreen</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-4 text-xs text-gray-600 bg-blue-50 p-2 rounded border border-blue-200">
+                📌 使用說明：
+                <br />• 點擊「下載 Excel 範本」取得包含兩個工作表的範本檔案
+                <br />• 在範本中填寫 Sample Sheet 和 Library Sample Sheet 資料
+                <br />• 點擊「上傳 Excel」自動匯入兩個表格的資料
+                <br />• 也可以使用各表格上的「貼上資料」功能單獨匯入
+              </div>
+
+              {/* Sample Sheet */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-semibold text-gray-700">Sample Sheet</h5>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={clearSampleSheet}
+                      className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                    >
+                      <RotateCcw size={14} />
+                      清空
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addLibrarySampleSheetRow}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                    >
+                      <Plus size={14} />
+                      新增樣本
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mb-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                  💡 提示：
+                  <br />• 複製 Excel 資料前，請先確認沒有合併的儲存格
+                  <br />• 從 Sample_Name 欄位開始複製（不含序號和標題）
+                  <br />• Library 欄位可輸入或從下拉選單選擇（建議來自 Sample Sheet 的 Sample Name）
+                  <br />• 複製貼上時 Library 欄位也會自動填入
+                  <br />• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2">序號</th>
+                        <th className="border p-2">Library Name*</th>
+                        <th className="border p-2">Tube Label*</th>
+                        <th className="border p-2">Conc* (ng/ul)</th>
+                        <th className="border p-2">Vol* (uL)</th>
+                        <th className="border p-2">NGS上機濃度 (pM)</th>
+                        <th className="border p-2">預期定序量</th>
+                        <th className="border p-2">備註</th>
+                        <th className="border p-2">操作</th>
+                      </tr>
+                    </thead>
+                    {/* Sample Sheet (Library 第一個表格) */}
+                    <tbody onPaste={(e) => handleTablePaste(e, 0)}>
+                      {formData.libraryInfo.sampleSheet.map((row, idx) => (
+                        <tr key={idx} className="bg-white">
+                          <td className="border p-2 text-center">{idx + 1}</td>
+
+                          {/* 🆕 Sample_Name - 加入錯誤檢查 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.sampleName}
+                              onChange={(e) => {
+                                handleLibrarySampleSheetChange(idx, 'sampleName', e.target.value);
+                                // 清除錯誤
+                                if (fieldErrors.sampleSheet[idx]?.sampleName) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.sampleSheet[idx]) {
+                                      delete newErrors.sampleSheet[idx].sampleName;
+                                      if (Object.keys(newErrors.sampleSheet[idx]).length === 0) {
+                                        delete newErrors.sampleSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet[idx]?.sampleName
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : ''
+                                }`}
+                              title={fieldErrors.sampleSheet[idx]?.sampleName || ''}
+                            />
+                            {fieldErrors.sampleSheet[idx]?.sampleName && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.sampleSheet[idx].sampleName}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* 🆕 Tube Label - 加入錯誤檢查 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.tubeLabel}
+                              onChange={(e) => {
+                                handleLibrarySampleSheetChange(idx, 'tubeLabel', e.target.value);
+                                // 清除錯誤
+                                if (fieldErrors.sampleSheet[idx]?.tubeLabel) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.sampleSheet[idx]) {
+                                      delete newErrors.sampleSheet[idx].tubeLabel;
+                                      if (Object.keys(newErrors.sampleSheet[idx]).length === 0) {
+                                        delete newErrors.sampleSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet[idx]?.tubeLabel
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : ''
+                                }`}
+                              title={fieldErrors.sampleSheet[idx]?.tubeLabel || ''}
+                            />
+                            {fieldErrors.sampleSheet[idx]?.tubeLabel && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.sampleSheet[idx].tubeLabel}
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="border p-2">
+                            <input
+                              type="number"
+                              value={row.conc}
+                              onChange={(e) => handleLibrarySampleSheetChange(idx, 'conc', e.target.value)}
+                              className="w-full px-2 py-1 border rounded"
+                            />
+                          </td>
+                          <td className="border p-2">
+                            <input
+                              type="number"
+                              value={row.vol}
+                              onChange={(e) => handleLibrarySampleSheetChange(idx, 'vol', e.target.value)}
+                              className="w-full px-2 py-1 border rounded"
+                            />
+                          </td>
+                          <td className="border p-2">
+                            <input
+                              type="number"
+                              value={row.ngsConc}
+                              onChange={(e) => handleLibrarySampleSheetChange(idx, 'ngsConc', e.target.value)}
+                              className="w-full px-2 py-1 border rounded"
+                            />
+                          </td>
+
+                          {/* 🆕 預期定序量 - 加入錯誤檢查 */}
+                          <td className="border p-2">
+                            <input
+                              type="number"
+                              value={row.expectedSeq}
+                              onChange={(e) => {
+                                handleLibrarySampleSheetChange(idx, 'expectedSeq', e.target.value);
+                                // 有錯誤時，使用者修改就清掉這個欄位的錯誤
+                                if (fieldErrors.sampleSheet[idx]?.expectedSeq) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.sampleSheet[idx]) {
+                                      delete newErrors.sampleSheet[idx].expectedSeq;
+                                      if (Object.keys(newErrors.sampleSheet[idx]).length === 0) {
+                                        delete newErrors.sampleSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              readOnly={!!getAPPackageConfig()} // AP 套組時唯讀
+                              className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet[idx]?.expectedSeq
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : getAPPackageConfig()
+                                  ? 'bg-purple-100 cursor-not-allowed font-bold text-purple-700'
+                                  : ''
+                                }`}
+                              title={
+                                fieldErrors.sampleSheet[idx]?.expectedSeq
+                                  ? fieldErrors.sampleSheet[idx].expectedSeq
+                                  : getAPPackageConfig()
+                                    ? '套組產品定序量已鎖定'
+                                    : ''
+                              }
+                            />
+                            {fieldErrors.sampleSheet[idx]?.expectedSeq && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.sampleSheet[idx].expectedSeq}
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.note}
+                              onChange={(e) => handleLibrarySampleSheetChange(idx, 'note', e.target.value)}
+                              className="w-full px-2 py-1 border rounded"
+                            />
+                          </td>
+                          <td className="border p-2 text-center">
+                            {formData.libraryInfo.sampleSheet.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeLibrarySampleSheetRow(idx)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Library Sample Sheet */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-semibold text-gray-700">Library Sample Sheet</h5>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={clearLibrarySheet}
+                      className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                    >
+                      <RotateCcw size={14} />
+                      清空
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addLibraryDetailRow}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                    >
+                      <Plus size={14} />
+                      新增Library Sample
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mb-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                  💡 提示：
+                  <br />• 複製 Excel 資料前，請先確認沒有合併的儲存格
+                  <br />• 從 Sample_Name 欄位開始複製（不含序號和標題）
+                  <br />• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2">序號</th>
+                        <th className="border p-2">Sample_Name*</th>
+                        <th className="border p-2">Library Prep Kit*</th>
+                        <th className="border p-2">Index Adapter Kit</th>
+                        <th className="border p-2">Set-Well Position</th>
+                        <th className="border p-2">Index 1 (i7)*</th>
+                        <th className="border p-2">Index 2 (i5)*</th>
+                        <th className="border p-2">備註</th>
+                        <th className="border p-2">Library</th>
+                        <th className="border p-2">操作</th>
+                      </tr>
+                    </thead>
+                    {/* Library Sample Sheet (第二個表格) */}
+                    <tbody onPaste={(e) => handleLibraryDetailTablePaste(e, 0)}>
+                      {formData.libraryInfo.librarySampleSheet.map((row, idx) => (
+                        <tr key={idx} className="bg-white">
+                          <td className="border p-2 text-center">{idx + 1}</td>
+
+                          {/* 🆕 Sample_Name - 必填 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.sampleName}
+                              onChange={(e) => {
+                                handleLibraryDetailChange(idx, 'sampleName', e.target.value);
+                                // 清除錯誤
+                                if (fieldErrors.libraryDetailSheet[idx]?.sampleName) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.libraryDetailSheet[idx]) {
+                                      delete newErrors.libraryDetailSheet[idx].sampleName;
+                                      if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
+                                        delete newErrors.libraryDetailSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              className={`w-full px-2 py-1 border rounded text-xs ${fieldErrors.libraryDetailSheet[idx]?.sampleName
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : ''
+                                }`}
+                              title={fieldErrors.libraryDetailSheet[idx]?.sampleName || ''}
+                            />
+                            {fieldErrors.libraryDetailSheet[idx]?.sampleName && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.libraryDetailSheet[idx].sampleName}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Library Prep Kit */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.libraryPrepKit}
+                              onChange={(e) => handleLibraryDetailChange(idx, 'libraryPrepKit', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </td>
+
+                          {/* Index Adapter Kit */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.indexAdapterKit}
+                              onChange={(e) => handleLibraryDetailChange(idx, 'indexAdapterKit', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </td>
+
+                          {/* Set-Well Position */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.setWellPosition}
+                              onChange={(e) => handleLibraryDetailChange(idx, 'setWellPosition', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </td>
+
+                          {/* 🆕 Index 1 (i7) - 必填 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.index1Seq}
+                              onChange={(e) => {
+                                handleLibraryDetailChange(idx, 'index1Seq', e.target.value);
+                                // 清除錯誤
+                                if (fieldErrors.libraryDetailSheet[idx]?.index1Seq) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.libraryDetailSheet[idx]) {
+                                      delete newErrors.libraryDetailSheet[idx].index1Seq;
+                                      if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
+                                        delete newErrors.libraryDetailSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              className={`w-full px-2 py-1 border rounded text-xs ${fieldErrors.libraryDetailSheet[idx]?.index1Seq
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : ''
+                                }`}
+                              title={fieldErrors.libraryDetailSheet[idx]?.index1Seq || ''}
+                            />
+                            {fieldErrors.libraryDetailSheet[idx]?.index1Seq && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.libraryDetailSheet[idx].index1Seq}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* 🆕 Index 2 (i5) - 必填 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.index2Seq}
+                              onChange={(e) => {
+                                handleLibraryDetailChange(idx, 'index2Seq', e.target.value);
+                                // 清除錯誤
+                                if (fieldErrors.libraryDetailSheet[idx]?.index2Seq) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.libraryDetailSheet[idx]) {
+                                      delete newErrors.libraryDetailSheet[idx].index2Seq;
+                                      if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
+                                        delete newErrors.libraryDetailSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              className={`w-full px-2 py-1 border rounded text-xs ${fieldErrors.libraryDetailSheet[idx]?.index2Seq
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : ''
+                                }`}
+                              title={fieldErrors.libraryDetailSheet[idx]?.index2Seq || ''}
+                            />
+                            {fieldErrors.libraryDetailSheet[idx]?.index2Seq && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.libraryDetailSheet[idx].index2Seq}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* 備註 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              value={row.note}
+                              onChange={(e) => handleLibraryDetailChange(idx, 'note', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </td>
+
+                          {/* 🆕 Library - 必填 */}
+                          <td className="border p-2">
+                            <input
+                              type="text"
+                              list={`library-options-${idx}`}
+                              value={row.library}
+                              onChange={(e) => {
+                                handleLibraryDetailChange(idx, 'library', e.target.value);
+                                // 清除錯誤
+                                if (fieldErrors.libraryDetailSheet[idx]?.library) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    if (newErrors.libraryDetailSheet[idx]) {
+                                      delete newErrors.libraryDetailSheet[idx].library;
+                                      if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
+                                        delete newErrors.libraryDetailSheet[idx];
+                                      }
+                                    }
+                                    return newErrors;
+                                  });
+                                }
+                              }}
+                              className={`w-full px-2 py-1 border rounded text-xs ${fieldErrors.libraryDetailSheet[idx]?.library
+                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                                : ''
+                                }`}
+                              placeholder="輸入或選擇"
+                              title={fieldErrors.libraryDetailSheet[idx]?.library || ''}
+                            />
+                            <datalist id={`library-options-${idx}`}>
+                              {formData.libraryInfo.sampleSheet.map((sample, sIdx) => (
+                                sample.sampleName && (
+                                  <option key={sIdx} value={sample.sampleName} />
+                                )
+                              ))}
+                            </datalist>
+                            {fieldErrors.libraryDetailSheet[idx]?.library && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {fieldErrors.libraryDetailSheet[idx].library}
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="border p-2 text-center">
+                            {formData.libraryInfo.librarySampleSheet.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeLibraryDetailRow(idx)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 電泳膠圖 */}
+              {/* <div>
+              <h5 className="font-semibold text-gray-700 mb-3">電泳膠圖</h5>
+              <textarea
+                value={formData.libraryInfo.gelImage}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  libraryInfo: { ...prev.libraryInfo, gelImage: e.target.value }
+                }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="請描述電泳膠圖資訊或上傳圖片連結"
+              />
+            </div> */}
+            </div>
+          )}
+
+          {/* Sample 送件資訊 */}
+          {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && (
+            <div className="col-span-2 mt-4 border-2 border-green-300 rounded-lg p-6 bg-green-50">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-gray-800">
+                  {formData.sampleType} 送件資訊
+                </h4>
+
+                <div className="flex justify-end gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={downloadSampleTemplate}
+                    className="text-sm px-3 py-2 border border-green-400 rounded-md text-green-700 hover:text-green-900 hover:bg-green-100 flex items-center gap-2 transition-all"
+                  >
+                    <Download size={16} />
+                    下載範本
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => excelUploadRef.current?.click()}
+                    className="text-sm px-3 py-2 border border-blue-400 rounded-md text-blue-700 hover:text-blue-900 hover:bg-blue-100 flex items-center gap-2 transition-all"
+                  >
+                    <Upload size={16} />
+                    上傳 Excel
+                  </button>
+                </div>
+              </div>
+
+              <input
+                ref={excelUploadRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleExcelUpload}
+                className="hidden"
+              />
+              {/* 🆕 拖拉上傳區域 */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`mb-4 p-6 border-2 border-dashed rounded-lg transition-all ${isDragging
+                  ? 'border-green-500 bg-green-100 scale-105'
+                  : 'border-green-300 bg-white hover:border-green-400 hover:bg-green-50'
+                  }`}
+              >
+                <div className="text-center">
+                  <Upload size={48} className={`mx-auto mb-2 ${isDragging ? 'text-green-600' : 'text-green-400'}`} />
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    {isDragging ? '放開以上傳檔案' : '拖曳 Excel 檔案到這裡'}
+                  </p>
+                  <p className="text-xs text-gray-500 mb-2">
+                    或使用下方按鈕選擇檔案
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    支援格式：.xlsx, .xls
+                  </p>
+                </div>
+              </div>
+              <div className="mb-4 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                💡 提示：
+                <br />• Sample_Name 勿用數字開頭，不能空格，僅允許"-"、"_"符號
+                <br />• 測定方法請選擇 Qubit 或 Nanodrop
+                <br />• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
+              </div>
+
+
+              {/* 濃度測定方式 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  濃度測定方式 <span className="text-red-600">*</span>
+                </label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-green-100">
+                    <input
+                      type="radio"
+                      name="sampleConcMethod"
+                      value="Qubit"
+                      checked={formData.sampleInfo.concMethod === 'Qubit'}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        sampleInfo: { ...prev.sampleInfo, concMethod: e.target.value }
+                      }))}
+                      className="w-4 h-4 text-green-600"
+                    />
+                    <span className="text-sm font-medium">Qubit</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-green-100">
+                    <input
+                      type="radio"
+                      name="sampleConcMethod"
+                      value="Nanodrop"
+                      checked={formData.sampleInfo.concMethod === 'Nanodrop'}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        sampleInfo: { ...prev.sampleInfo, concMethod: e.target.value }
+                      }))}
+                      className="w-4 h-4 text-green-600"
+                    />
+                    <span className="text-sm font-medium">Nanodrop</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {/* <button
+                type="button"
+                onClick={downloadSampleTemplate}
+                className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-green-50 border border-green-300"
+              >
+                <Download size={14} />
+                下載範本
+              </button> */}
+                {/* <button
+                type="button"
+                onClick={() => excelUploadRef.current?.click()}
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 border border-blue-300"
+              >
+                <Upload size={14} />
+                上傳 Excel
+              </button> */}
+                <button
+                  type="button"
+                  onClick={clearSampleInfoSheet}
+                  className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                >
+                  <RotateCcw size={14} />
+                  清空
+                </button>
+                <button
+                  type="button"
+                  onClick={addSampleSheetRow}
+                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                >
+                  <Plus size={14} />
+                  新增樣本
+                </button>
+              </div>
+              <br />
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="border p-2">序號</th>
-                      <th className="border p-2">Library Name*</th>
+                      <th className="border p-2">Sample_Name*</th>
                       <th className="border p-2">Tube Label*</th>
+                      <th className="border p-2">預期定序量</th>
                       <th className="border p-2">Conc* (ng/ul)</th>
                       <th className="border p-2">Vol* (uL)</th>
-                      <th className="border p-2">NGS上機濃度 (pM)</th>
-                      <th className="border p-2">預期定序量</th>
+                      <th className="border p-2">260/280</th>
+                      <th className="border p-2">260/230</th>
+                      <th className="border p-2">DQN/RQN</th>
                       <th className="border p-2">備註</th>
                       <th className="border p-2">操作</th>
                     </tr>
                   </thead>
-                  {/* Sample Sheet (Library 第一個表格) */}
-                  <tbody onPaste={(e) => handleTablePaste(e, 0)}>
-                    {formData.libraryInfo.sampleSheet.map((row, idx) => (
+                  <tbody onPaste={(e) => handleSampleTablePaste(e, 0)}>
+                    {formData.sampleInfo.sampleSheet.map((row, idx) => (
                       <tr key={idx} className="bg-white">
                         <td className="border p-2 text-center">{idx + 1}</td>
-                        
-                        {/* 🆕 Sample_Name - 加入錯誤檢查 */}
+
+                        {/* Sample_Name */}
                         <td className="border p-2">
                           <input
                             type="text"
                             value={row.sampleName}
                             onChange={(e) => {
-                              handleLibrarySampleSheetChange(idx, 'sampleName', e.target.value);
-                              // 清除錯誤
+                              handleSampleSheetChange(idx, 'sampleName', e.target.value);
                               if (fieldErrors.sampleSheet[idx]?.sampleName) {
                                 setFieldErrors(prev => {
                                   const newErrors = { ...prev };
@@ -3765,11 +4914,11 @@ const renderStep2 = () => {
                                 });
                               }
                             }}
-                            className={`w-full px-2 py-1 border rounded ${
-                              fieldErrors.sampleSheet[idx]?.sampleName 
-                                ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-                                : ''
-                            }`}
+                            className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet[idx]?.sampleName
+                              ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                              : ''
+                              }`}
+                            placeholder=""
                             title={fieldErrors.sampleSheet[idx]?.sampleName || ''}
                           />
                           {fieldErrors.sampleSheet[idx]?.sampleName && (
@@ -3778,15 +4927,14 @@ const renderStep2 = () => {
                             </p>
                           )}
                         </td>
-                        
-                        {/* 🆕 Tube Label - 加入錯誤檢查 */}
+
+                        {/* Tube Label */}
                         <td className="border p-2">
                           <input
                             type="text"
                             value={row.tubeLabel}
                             onChange={(e) => {
-                              handleLibrarySampleSheetChange(idx, 'tubeLabel', e.target.value);
-                              // 清除錯誤
+                              handleSampleSheetChange(idx, 'tubeLabel', e.target.value);
                               if (fieldErrors.sampleSheet[idx]?.tubeLabel) {
                                 setFieldErrors(prev => {
                                   const newErrors = { ...prev };
@@ -3800,11 +4948,10 @@ const renderStep2 = () => {
                                 });
                               }
                             }}
-                            className={`w-full px-2 py-1 border rounded ${
-                              fieldErrors.sampleSheet[idx]?.tubeLabel 
-                                ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-                                : ''
-                            }`}
+                            className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet[idx]?.tubeLabel
+                              ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                              : ''
+                              }`}
                             title={fieldErrors.sampleSheet[idx]?.tubeLabel || ''}
                           />
                           {fieldErrors.sampleSheet[idx]?.tubeLabel && (
@@ -3813,40 +4960,14 @@ const renderStep2 = () => {
                             </p>
                           )}
                         </td>
-                        
-                        <td className="border p-2">
-                          <input
-                            type="number"
-                            value={row.conc}
-                            onChange={(e) => handleLibrarySampleSheetChange(idx, 'conc', e.target.value)}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        </td>
-                        <td className="border p-2">
-                          <input
-                            type="number"
-                            value={row.vol}
-                            onChange={(e) => handleLibrarySampleSheetChange(idx, 'vol', e.target.value)}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        </td>
-                        <td className="border p-2">
-                          <input
-                            type="number"
-                            value={row.ngsConc}
-                            onChange={(e) => handleLibrarySampleSheetChange(idx, 'ngsConc', e.target.value)}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        </td>
-                        
-                        {/* 🆕 預期定序量 - 加入錯誤檢查 */}
                         <td className="border p-2">
                           <input
                             type="number"
                             value={row.expectedSeq}
                             onChange={(e) => {
-                              handleLibrarySampleSheetChange(idx, 'expectedSeq', e.target.value);
-                              // 有錯誤時，使用者修改就清掉這個欄位的錯誤
+                              handleSampleSheetChange(idx, 'expectedSeq', e.target.value);
+
+                              // 🆕 有錯誤時，使用者一輸入就清掉這欄的錯誤
                               if (fieldErrors.sampleSheet[idx]?.expectedSeq) {
                                 setFieldErrors(prev => {
                                   const newErrors = { ...prev };
@@ -3861,19 +4982,18 @@ const renderStep2 = () => {
                               }
                             }}
                             readOnly={!!getAPPackageConfig()} // AP 套組時唯讀
-                            className={`w-full px-2 py-1 border rounded ${
-                              fieldErrors.sampleSheet[idx]?.expectedSeq
-                                ? 'bg-red-100 border-red-500 focus:ring-red-500'
-                                : getAPPackageConfig()
+                            className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet[idx]?.expectedSeq
+                              ? 'bg-red-100 border-red-500 focus:ring-red-500'
+                              : getAPPackageConfig()
                                 ? 'bg-purple-100 cursor-not-allowed font-bold text-purple-700'
                                 : ''
-                            }`}
+                              }`}
                             title={
                               fieldErrors.sampleSheet[idx]?.expectedSeq
                                 ? fieldErrors.sampleSheet[idx].expectedSeq
                                 : getAPPackageConfig()
-                                ? '套組產品定序量已鎖定'
-                                : ''
+                                  ? '套組產品定序量已鎖定'
+                                  : ''
                             }
                           />
                           {fieldErrors.sampleSheet[idx]?.expectedSeq && (
@@ -3882,20 +5002,63 @@ const renderStep2 = () => {
                             </p>
                           )}
                         </td>
-                        
+
+                        <td className="border p-2">
+                          <input
+                            type="number"
+                            value={row.conc}
+                            onChange={(e) => handleSampleSheetChange(idx, 'conc', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </td>
+                        <td className="border p-2">
+                          <input
+                            type="number"
+                            value={row.vol}
+                            onChange={(e) => handleSampleSheetChange(idx, 'vol', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </td>
+                        <td className="border p-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.ratio260280}
+                            onChange={(e) => handleSampleSheetChange(idx, 'ratio260280', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </td>
+                        <td className="border p-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.ratio260230}
+                            onChange={(e) => handleSampleSheetChange(idx, 'ratio260230', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </td>
+                        <td className="border p-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={row.dqnRqn}
+                            onChange={(e) => handleSampleSheetChange(idx, 'dqnRqn', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </td>
                         <td className="border p-2">
                           <input
                             type="text"
                             value={row.note}
-                            onChange={(e) => handleLibrarySampleSheetChange(idx, 'note', e.target.value)}
+                            onChange={(e) => handleSampleSheetChange(idx, 'note', e.target.value)}
                             className="w-full px-2 py-1 border rounded"
                           />
                         </td>
                         <td className="border p-2 text-center">
-                          {formData.libraryInfo.sampleSheet.length > 1 && (
+                          {formData.sampleInfo.sampleSheet.length > 1 && (
                             <button
                               type="button"
-                              onClick={() => removeLibrarySampleSheetRow(idx)}
+                              onClick={() => removeSampleSheetRow(idx)}
                               className="text-red-500 hover:text-red-700"
                             >
                               <X size={16} />
@@ -3905,1124 +5068,1312 @@ const renderStep2 = () => {
                       </tr>
                     ))}
                   </tbody>
-                                  </table>
-              </div>
-            </div>
-
-            {/* Library Sample Sheet */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h5 className="font-semibold text-gray-700">Library Sample Sheet</h5>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={clearLibrarySheet}
-                    className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
-                  >
-                    <RotateCcw size={14} />
-                    清空
-                  </button>
-                  <button
-                    type="button"
-                    onClick={addLibraryDetailRow}
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
-                  >
-                    <Plus size={14} />
-                    新增Library Sample
-                  </button>
-                </div>
-              </div>
-              
-              <div className="mb-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
-                💡 提示：
-                <br/>• 複製 Excel 資料前，請先確認沒有合併的儲存格
-                <br/>• 從 Sample_Name 欄位開始複製（不含序號和標題）
-                <br/>• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2">序號</th>
-                      <th className="border p-2">Sample_Name*</th>
-                      <th className="border p-2">Library Prep Kit*</th>
-                      <th className="border p-2">Index Adapter Kit</th>
-                      <th className="border p-2">Set-Well Position</th>
-                      <th className="border p-2">Index 1 (i7)*</th>
-                      <th className="border p-2">Index 2 (i5)*</th>
-                      <th className="border p-2">備註</th>
-                      <th className="border p-2">Library</th>
-                      <th className="border p-2">操作</th>
-                    </tr>
-                  </thead>
-                  {/* Library Sample Sheet (第二個表格) */}
-<tbody onPaste={(e) => handleLibraryDetailTablePaste(e, 0)}>
-  {formData.libraryInfo.librarySampleSheet.map((row, idx) => (
-    <tr key={idx} className="bg-white">
-      <td className="border p-2 text-center">{idx + 1}</td>
-      
-      {/* 🆕 Sample_Name - 必填 */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.sampleName}
-          onChange={(e) => {
-            handleLibraryDetailChange(idx, 'sampleName', e.target.value);
-            // 清除錯誤
-            if (fieldErrors.libraryDetailSheet[idx]?.sampleName) {
-              setFieldErrors(prev => {
-                const newErrors = { ...prev };
-                if (newErrors.libraryDetailSheet[idx]) {
-                  delete newErrors.libraryDetailSheet[idx].sampleName;
-                  if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
-                    delete newErrors.libraryDetailSheet[idx];
-                  }
-                }
-                return newErrors;
-              });
-            }
-          }}
-          className={`w-full px-2 py-1 border rounded text-xs ${
-            fieldErrors.libraryDetailSheet[idx]?.sampleName 
-              ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-              : ''
-          }`}
-          title={fieldErrors.libraryDetailSheet[idx]?.sampleName || ''}
-        />
-        {fieldErrors.libraryDetailSheet[idx]?.sampleName && (
-          <p className="text-xs text-red-600 mt-1">
-            {fieldErrors.libraryDetailSheet[idx].sampleName}
-          </p>
-        )}
-      </td>
-      
-      {/* Library Prep Kit */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.libraryPrepKit}
-          onChange={(e) => handleLibraryDetailChange(idx, 'libraryPrepKit', e.target.value)}
-          className="w-full px-2 py-1 border rounded text-xs"
-        />
-      </td>
-      
-      {/* Index Adapter Kit */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.indexAdapterKit}
-          onChange={(e) => handleLibraryDetailChange(idx, 'indexAdapterKit', e.target.value)}
-          className="w-full px-2 py-1 border rounded text-xs"
-        />
-      </td>
-      
-      {/* Set-Well Position */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.setWellPosition}
-          onChange={(e) => handleLibraryDetailChange(idx, 'setWellPosition', e.target.value)}
-          className="w-full px-2 py-1 border rounded text-xs"
-        />
-      </td>
-      
-      {/* 🆕 Index 1 (i7) - 必填 */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.index1Seq}
-          onChange={(e) => {
-            handleLibraryDetailChange(idx, 'index1Seq', e.target.value);
-            // 清除錯誤
-            if (fieldErrors.libraryDetailSheet[idx]?.index1Seq) {
-              setFieldErrors(prev => {
-                const newErrors = { ...prev };
-                if (newErrors.libraryDetailSheet[idx]) {
-                  delete newErrors.libraryDetailSheet[idx].index1Seq;
-                  if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
-                    delete newErrors.libraryDetailSheet[idx];
-                  }
-                }
-                return newErrors;
-              });
-            }
-          }}
-          className={`w-full px-2 py-1 border rounded text-xs ${
-            fieldErrors.libraryDetailSheet[idx]?.index1Seq 
-              ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-              : ''
-          }`}
-          title={fieldErrors.libraryDetailSheet[idx]?.index1Seq || ''}
-        />
-        {fieldErrors.libraryDetailSheet[idx]?.index1Seq && (
-          <p className="text-xs text-red-600 mt-1">
-            {fieldErrors.libraryDetailSheet[idx].index1Seq}
-          </p>
-        )}
-      </td>
-      
-      {/* 🆕 Index 2 (i5) - 必填 */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.index2Seq}
-          onChange={(e) => {
-            handleLibraryDetailChange(idx, 'index2Seq', e.target.value);
-            // 清除錯誤
-            if (fieldErrors.libraryDetailSheet[idx]?.index2Seq) {
-              setFieldErrors(prev => {
-                const newErrors = { ...prev };
-                if (newErrors.libraryDetailSheet[idx]) {
-                  delete newErrors.libraryDetailSheet[idx].index2Seq;
-                  if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
-                    delete newErrors.libraryDetailSheet[idx];
-                  }
-                }
-                return newErrors;
-              });
-            }
-          }}
-          className={`w-full px-2 py-1 border rounded text-xs ${
-            fieldErrors.libraryDetailSheet[idx]?.index2Seq 
-              ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-              : ''
-          }`}
-          title={fieldErrors.libraryDetailSheet[idx]?.index2Seq || ''}
-        />
-        {fieldErrors.libraryDetailSheet[idx]?.index2Seq && (
-          <p className="text-xs text-red-600 mt-1">
-            {fieldErrors.libraryDetailSheet[idx].index2Seq}
-          </p>
-        )}
-      </td>
-      
-      {/* 備註 */}
-      <td className="border p-2">
-        <input
-          type="text"
-          value={row.note}
-          onChange={(e) => handleLibraryDetailChange(idx, 'note', e.target.value)}
-          className="w-full px-2 py-1 border rounded text-xs"
-        />
-      </td>
-      
-      {/* 🆕 Library - 必填 */}
-      <td className="border p-2">
-        <input
-          type="text"
-          list={`library-options-${idx}`}
-          value={row.library}
-          onChange={(e) => {
-            handleLibraryDetailChange(idx, 'library', e.target.value);
-            // 清除錯誤
-            if (fieldErrors.libraryDetailSheet[idx]?.library) {
-              setFieldErrors(prev => {
-                const newErrors = { ...prev };
-                if (newErrors.libraryDetailSheet[idx]) {
-                  delete newErrors.libraryDetailSheet[idx].library;
-                  if (Object.keys(newErrors.libraryDetailSheet[idx]).length === 0) {
-                    delete newErrors.libraryDetailSheet[idx];
-                  }
-                }
-                return newErrors;
-              });
-            }
-          }}
-          className={`w-full px-2 py-1 border rounded text-xs ${
-            fieldErrors.libraryDetailSheet[idx]?.library 
-              ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-              : ''
-          }`}
-          placeholder="輸入或選擇"
-          title={fieldErrors.libraryDetailSheet[idx]?.library || ''}
-        />
-        <datalist id={`library-options-${idx}`}>
-          {formData.libraryInfo.sampleSheet.map((sample, sIdx) => (
-            sample.sampleName && (
-              <option key={sIdx} value={sample.sampleName} />
-            )
-          ))}
-        </datalist>
-        {fieldErrors.libraryDetailSheet[idx]?.library && (
-          <p className="text-xs text-red-600 mt-1">
-            {fieldErrors.libraryDetailSheet[idx].library}
-          </p>
-        )}
-      </td>
-      
-      <td className="border p-2 text-center">
-        {formData.libraryInfo.librarySampleSheet.length > 1 && (
-          <button
-            type="button"
-            onClick={() => removeLibraryDetailRow(idx)}
-            className="text-red-500 hover:text-red-700"
-          >
-            <X size={16} />
-          </button>
-        )}
-      </td>
-    </tr>
-  ))}
-</tbody>
                 </table>
               </div>
             </div>
+          )}
 
-            {/* 電泳膠圖 */}
-            {/* <div>
-              <h5 className="font-semibold text-gray-700 mb-3">電泳膠圖</h5>
-              <textarea
-                value={formData.libraryInfo.gelImage}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  libraryInfo: { ...prev.libraryInfo, gelImage: e.target.value }
-                }))}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
-                placeholder="請描述電泳膠圖資訊或上傳圖片連結"
-              />
-            </div> */}
-          </div>
-        )}
-
-        {/* Sample 送件資訊 */}
-        {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && (
-          <div className="col-span-2 mt-4 border-2 border-green-300 rounded-lg p-6 bg-green-50">
-    <div className="flex items-center justify-between mb-4">
-      <h4 className="text-lg font-bold text-gray-800">
-        {formData.sampleType} 送件資訊
-      </h4>
-
-          <div className="flex justify-end gap-3 mt-2">
-            <button
-              type="button"
-              onClick={downloadSampleTemplate}
-              className="text-sm px-3 py-2 border border-green-400 rounded-md text-green-700 hover:text-green-900 hover:bg-green-100 flex items-center gap-2 transition-all"
-            >
-              <Download size={16} />
-              下載範本
-            </button>
-            <button
-              type="button"
-              onClick={() => excelUploadRef.current?.click()}
-              className="text-sm px-3 py-2 border border-blue-400 rounded-md text-blue-700 hover:text-blue-900 hover:bg-blue-100 flex items-center gap-2 transition-all"
-            >
-              <Upload size={16} />
-              上傳 Excel
-            </button>
-              </div>
-              </div>
-
-            <input
-              ref={excelUploadRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleExcelUpload}
-              className="hidden"
-            />
-          {/* 🆕 拖拉上傳區域 */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`mb-4 p-6 border-2 border-dashed rounded-lg transition-all ${
-              isDragging 
-                ? 'border-green-500 bg-green-100 scale-105' 
-                : 'border-green-300 bg-white hover:border-green-400 hover:bg-green-50'
-            }`}
-          >
-            <div className="text-center">
-              <Upload size={48} className={`mx-auto mb-2 ${isDragging ? 'text-green-600' : 'text-green-400'}`} />
-              <p className="text-sm font-medium text-gray-700 mb-1">
-                {isDragging ? '放開以上傳檔案' : '拖曳 Excel 檔案到這裡'}
-              </p>
-              <p className="text-xs text-gray-500 mb-2">
-                或使用下方按鈕選擇檔案
-              </p>
-              <div className="flex gap-2 justify-center">      
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                支援格式：.xlsx, .xls
-              </p>
-            </div>
-          </div>            
-            <div className="mb-4 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-200">
-              💡 提示：
-              <br/>• Sample_Name 勿用數字開頭，不能空格，僅允許"-"、"_"符號
-              <br/>• 測定方法請選擇 Qubit 或 Nanodrop
-              <br/>• 點擊表格任一儲存格後按 Ctrl+V 貼上，系統會自動新增行數
-            </div>
-
-                     
-            {/* 濃度測定方式 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                濃度測定方式 <span className="text-red-600">*</span>
+          {/* 保存方式、樣品數量等 */}
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                保存方式 <span className="text-red-600">*</span>
               </label>
-              <div className="flex gap-3">
-                <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-green-100">
+              <select
+                name="preservationMethod"
+                value={formData.preservationMethod}
+                onChange={handleInputChange}
+                disabled={isOnlyAnalysis && isRNAseqAnalysis}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isOnlyAnalysis && isRNAseqAnalysis ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              >
+                {isOnlyAnalysis && isRNAseqAnalysis ? (
+                  <option>其他</option>
+                ) : (
+                  <>
+                    <option>Nuclease-free H2O</option>
+                    <option>Tris Buffer</option>
+                    <option>Trizol</option>
+                    <option>EDTA Tube(Blood)</option>
+                    <option>Tempus Tube(Blood)</option>
+                    <option>其他</option>
+                  </>
+                )}
+              </select>
+              {isOnlyAnalysis && isRNAseqAnalysis && (
+                <p className="text-xs text-orange-600 mt-1">
+                  📌 RNAseq 純分析服務，保存方式自動選擇「其他」
+                </p>
+              )}
+              {/* 🆕 當選擇「其他」時顯示輸入框 */}
+              {(formData.preservationMethod === '其他' || (isOnlyAnalysis && isRNAseqAnalysis)) && (
+                <input
+                  type="text"
+                  name="preservationMethodOther"
+                  value={formData.preservationMethodOther}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                  placeholder="請說明保存方式"
+                />
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                樣品數量 <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="number"
+                name="sampleCount"
+                value={formData.sampleCount}
+                readOnly  // 🆕 唯讀，由系統自動計算
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                min="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                💡 由系統自動計算（依據 Sample Sheet）
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                物種 <span className="text-red-600">*</span>
+              </label>
+              <select
+                name="species"
+                value={formData.species}
+                onChange={(e) => {
+                  const selectedSpeciesName = e.target.value;
+
+                  // 找到選中的物種資料
+                  const speciesData = isRNAseqAnalysis
+                    ? supportSpecies.find(s => s.commonName === selectedSpeciesName)
+                    : null;
+
+                  setFormData(prev => ({
+                    ...prev,
+                    species: selectedSpeciesName,
+                    speciesScientificName: speciesData?.scientificName || '',
+                    speciesReferenceGenome: speciesData?.referenceGenome || ''
+                  }));
+                }}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${isRNAseqAnalysis && (!formData.species || formData.species === '物種請選擇')
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-gray-300'
+                  }`}
+              >
+                <option>物種請選擇</option>
+                {isRNAseqAnalysis ? (
+                  // RNAseq 分析服務：使用 support_species.json
+                  <>
+                    {supportSpecies.filter(s => s.forRNAseq).map((species, idx) => (
+                      <option key={idx} value={species.commonName}>
+                        {species.commonName}
+                      </option>
+                    ))}
+                    <option>其他</option>
+                  </>
+                ) : (
+                  // 一般服務：原有選項
+                  <>
+                    <option>Human</option>
+                    <option>Mouse</option>
+                    <option>Rat</option>
+                    <option>其他</option>
+                  </>
+                )}
+              </select>
+
+              {/* 顯示選中物種的詳細資訊 (僅 RNAseq) */}
+              {isRNAseqAnalysis && formData.species !== '物種請選擇' && formData.species !== '其他' && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="font-medium text-gray-600">學名：</span>
+                      <span className="text-gray-800 italic">{formData.speciesScientificName}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">參考基因組：</span>
+                      <span className="text-gray-800">{formData.speciesReferenceGenome}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 🆕 當選擇「其他」時顯示輸入框 */}
+              {formData.species === '其他' && (
+                <div className="mt-2 space-y-2">
                   <input
-                    type="radio"
-                    name="sampleConcMethod"
-                    value="Qubit"
-                    checked={formData.sampleInfo.concMethod === 'Qubit'}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      sampleInfo: { ...prev.sampleInfo, concMethod: e.target.value }
-                    }))}
-                    className="w-4 h-4 text-green-600"
+                    type="text"
+                    name="speciesOther"
+                    value={formData.speciesOther}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${formData.species === '其他' && !formData.speciesOther
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-300'
+                      }`}
+                    placeholder="物種俗名（例：Zebrafish）"
                   />
-                  <span className="text-sm font-medium">Qubit</span>
-                </label>
-                
-                <label className="flex items-center gap-2 px-4 py-2 border-2 rounded-lg cursor-pointer transition hover:bg-green-100">
                   <input
-                    type="radio"
-                    name="sampleConcMethod"
-                    value="Nanodrop"
-                    checked={formData.sampleInfo.concMethod === 'Nanodrop'}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      sampleInfo: { ...prev.sampleInfo, concMethod: e.target.value }
-                    }))}
-                    className="w-4 h-4 text-green-600"
+                    type="text"
+                    name="speciesOtherScientificName"
+                    value={formData.speciesOtherScientificName}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${formData.species === '其他' && !formData.speciesOtherScientificName
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-300'
+                      }`}
+                    placeholder="學名（例：Homo sapiens）"
                   />
-                  <span className="text-sm font-medium">Nanodrop</span>
-                </label>
-              </div>
+                  <input
+                    type="text"
+                    name="speciesOtherReferenceGenome" // 🆕 新增欄位
+                    value={formData.speciesOtherReferenceGenome}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="參考基因組名稱（非必填）（例：GRCh38）"
+                  />
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-2">
-              {/* <button
-                type="button"
-                onClick={downloadSampleTemplate}
-                className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-green-50 border border-green-300"
-              >
-                <Download size={14} />
-                下載範本
-              </button> */}
-              {/* <button
-                type="button"
-                onClick={() => excelUploadRef.current?.click()}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 border border-blue-300"
-              >
-                <Upload size={14} />
-                上傳 Excel
-              </button> */}
-              <button
-                type="button"
-                onClick={clearSampleInfoSheet}
-                className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
-              >
-                <RotateCcw size={14} />
-                清空
-              </button>
-              <button
-                type="button"
-                onClick={addSampleSheetRow}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
-              >
-                <Plus size={14} />
-                新增樣本
-              </button>
-            </div>
-            <br/>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border p-2">序號</th>
-                    <th className="border p-2">Sample_Name*</th>
-                    <th className="border p-2">Tube Label*</th>
-                    <th className="border p-2">預期定序量</th>
-                    <th className="border p-2">Conc* (ng/ul)</th>
-                    <th className="border p-2">Vol* (uL)</th>
-                    <th className="border p-2">260/280</th>
-                    <th className="border p-2">260/230</th>
-                    <th className="border p-2">DQN/RQN</th>
-                    <th className="border p-2">備註</th>
-                    <th className="border p-2">操作</th>
-                  </tr>
-                </thead>
-              <tbody onPaste={(e) => handleSampleTablePaste(e, 0)}>
-                {formData.sampleInfo.sampleSheet.map((row, idx) => (
-                  <tr key={idx} className="bg-white">
-                    <td className="border p-2 text-center">{idx + 1}</td>
-                    
-                      {/* Sample_Name */}
-                      <td className="border p-2">
-                        <input
-                          type="text"
-                          value={row.sampleName}
-                          onChange={(e) => {
-                            handleSampleSheetChange(idx, 'sampleName', e.target.value);
-                            if (fieldErrors.sampleSheet[idx]?.sampleName) {
-                              setFieldErrors(prev => {
-                                const newErrors = { ...prev };
-                                if (newErrors.sampleSheet[idx]) {
-                                  delete newErrors.sampleSheet[idx].sampleName;
-                                  if (Object.keys(newErrors.sampleSheet[idx]).length === 0) {
-                                    delete newErrors.sampleSheet[idx];
-                                  }
-                                }
-                                return newErrors;
-                              });
-                            }
-                          }}
-                          className={`w-full px-2 py-1 border rounded ${
-                            fieldErrors.sampleSheet[idx]?.sampleName 
-                              ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-                              : ''
-                          }`}
-                          placeholder=""
-                          title={fieldErrors.sampleSheet[idx]?.sampleName || ''}
-                        />
-                        {fieldErrors.sampleSheet[idx]?.sampleName && (
-                          <p className="text-xs text-red-600 mt-1">
-                            {fieldErrors.sampleSheet[idx].sampleName}
-                          </p>
-                        )}
-                      </td>
-                      
-                      {/* Tube Label */}
-                      <td className="border p-2">
-                        <input
-                          type="text"
-                          value={row.tubeLabel}
-                          onChange={(e) => {
-                            handleSampleSheetChange(idx, 'tubeLabel', e.target.value);
-                            if (fieldErrors.sampleSheet[idx]?.tubeLabel) {
-                              setFieldErrors(prev => {
-                                const newErrors = { ...prev };
-                                if (newErrors.sampleSheet[idx]) {
-                                  delete newErrors.sampleSheet[idx].tubeLabel;
-                                  if (Object.keys(newErrors.sampleSheet[idx]).length === 0) {
-                                    delete newErrors.sampleSheet[idx];
-                                  }
-                                }
-                                return newErrors;
-                              });
-                            }
-                          }}
-                          className={`w-full px-2 py-1 border rounded ${
-                            fieldErrors.sampleSheet[idx]?.tubeLabel 
-                              ? 'bg-red-100 border-red-500 focus:ring-red-500' 
-                              : ''
-                          }`}
-                          title={fieldErrors.sampleSheet[idx]?.tubeLabel || ''}
-                        />
-                        {fieldErrors.sampleSheet[idx]?.tubeLabel && (
-                          <p className="text-xs text-red-600 mt-1">
-                            {fieldErrors.sampleSheet[idx].tubeLabel}
-                          </p>
-                        )}
-                      </td>
-                      <td className="border p-2">
-                        <input
-                          type="number"
-                          value={row.expectedSeq}
-                          onChange={(e) => {
-                            handleSampleSheetChange(idx, 'expectedSeq', e.target.value);
-
-                            // 🆕 有錯誤時，使用者一輸入就清掉這欄的錯誤
-                            if (fieldErrors.sampleSheet[idx]?.expectedSeq) {
-                              setFieldErrors(prev => {
-                                const newErrors = { ...prev };
-                                if (newErrors.sampleSheet[idx]) {
-                                  delete newErrors.sampleSheet[idx].expectedSeq;
-                                  if (Object.keys(newErrors.sampleSheet[idx]).length === 0) {
-                                    delete newErrors.sampleSheet[idx];
-                                  }
-                                }
-                                return newErrors;
-                              });
-                            }
-                          }}
-                          readOnly={!!getAPPackageConfig()} // AP 套組時唯讀
-                          className={`w-full px-2 py-1 border rounded ${
-                            fieldErrors.sampleSheet[idx]?.expectedSeq
-                              ? 'bg-red-100 border-red-500 focus:ring-red-500'
-                              : getAPPackageConfig()
-                              ? 'bg-purple-100 cursor-not-allowed font-bold text-purple-700'
-                              : ''
-                          }`}
-                          title={
-                            fieldErrors.sampleSheet[idx]?.expectedSeq
-                              ? fieldErrors.sampleSheet[idx].expectedSeq
-                              : getAPPackageConfig()
-                              ? '套組產品定序量已鎖定'
-                              : ''
-                          }
-                        />
-                        {fieldErrors.sampleSheet[idx]?.expectedSeq && (
-                          <p className="text-xs text-red-600 mt-1">
-                            {fieldErrors.sampleSheet[idx].expectedSeq}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="border p-2">
-                        <input
-                          type="number"
-                          value={row.conc}
-                          onChange={(e) => handleSampleSheetChange(idx, 'conc', e.target.value)}
-                          className="w-full px-2 py-1 border rounded"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <input
-                          type="number"
-                          value={row.vol}
-                          onChange={(e) => handleSampleSheetChange(idx, 'vol', e.target.value)}
-                          className="w-full px-2 py-1 border rounded"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.ratio260280}
-                          onChange={(e) => handleSampleSheetChange(idx, 'ratio260280', e.target.value)}
-                          className="w-full px-2 py-1 border rounded"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.ratio260230}
-                          onChange={(e) => handleSampleSheetChange(idx, 'ratio260230', e.target.value)}
-                          className="w-full px-2 py-1 border rounded"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={row.dqnRqn}
-                          onChange={(e) => handleSampleSheetChange(idx, 'dqnRqn', e.target.value)}
-                          className="w-full px-2 py-1 border rounded"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <input
-                          type="text"
-                          value={row.note}
-                          onChange={(e) => handleSampleSheetChange(idx, 'note', e.target.value)}
-                          className="w-full px-2 py-1 border rounded"
-                        />
-                      </td>
-                      <td className="border p-2 text-center">
-                        {formData.sampleInfo.sampleSheet.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeSampleSheetRow(idx)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* 保存方式、樣品數量等 */}
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              保存方式 <span className="text-red-600">*</span>
-            </label>
-            <select
-              name="preservationMethod"
-              value={formData.preservationMethod}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option>Nuclease-free H2O</option>
-              <option>Tris Buffer</option>
-              <option>Trizol</option>
-              <option>EDTA Tube(Blood)</option>
-              <option>Tempus Tube(Blood)</option>
-              <option>其他</option>
-            </select>
-            {/* 🆕 當選擇「其他」時顯示輸入框 */}
-            {formData.preservationMethod === '其他' && (
-              <input
-                type="text"
-                name="preservationMethodOther"
-                value={formData.preservationMethodOther}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                寄送方式 <span className="text-red-600">*</span>
+              </label>
+              <select
+                name="shippingMethod"
+                value={formData.shippingMethod}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
-                placeholder="請說明保存方式"
-              />
-            )}            
+                disabled={isOnlyAnalysis && isRNAseqAnalysis}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isOnlyAnalysis && isRNAseqAnalysis ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              >
+                {isOnlyAnalysis && isRNAseqAnalysis ? (
+                  <option>其他</option>
+                ) : (
+                  <>
+                    <option>冷凍(乾冰)</option>
+                    <option>冷藏</option>
+                    <option>常溫</option>
+                    <option>其他</option>
+                  </>
+                )}
+              </select>
+              {isOnlyAnalysis && isRNAseqAnalysis && (
+                <p className="text-xs text-orange-600 mt-1">
+                  📌 RNAseq 純分析服務，寄送方式自動選擇「其他」
+                </p>
+              )}
+              {/* 🆕 當選擇「其他」時顯示輸入框 */}
+              {(formData.shippingMethod === '其他' || (isOnlyAnalysis && isRNAseqAnalysis)) && (
+                <input
+                  type="text"
+                  name="shippingMethodOther"
+                  value={formData.shippingMethodOther}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
+                  placeholder="請說明寄送方式"
+                />
+              )}
+            </div>
           </div>
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    樣品數量 <span className="text-red-600">*</span>
-  </label>
-  <input
-    type="number"
-    name="sampleCount"
-    value={formData.sampleCount}
-    readOnly  // 🆕 唯讀，由系統自動計算
-    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-    min="1"
-  />
-  <p className="text-xs text-gray-500 mt-1">
-    💡 由系統自動計算（依據 Sample Sheet）
-  </p>
-</div>
-          <div>
+
+          {/* 備註 */}
+          <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              物種 <span className="text-red-600"></span>
+              備註
             </label>
-            <select
-              name="species"
-              value={formData.species}
+            <textarea
+              name="notes"
+              value={formData.notes}
               onChange={handleInputChange}
+              rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option>物種請選擇</option>
-              <option>Human</option>
-              <option>Mouse</option>
-              <option>Rat</option>
-              <option>其他</option>
-            </select>
-            {/* 🆕 當選擇「其他」時顯示輸入框 */}
-            {formData.species === '其他' && (
-              <input
-                type="text"
-                name="speciesOther"
-                value={formData.speciesOther}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
-                placeholder="請輸入物種名稱（例：Zebrafish、Pig）"
-              />
-            )}            
-          </div>
-   
-           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              寄送方式 <span className="text-red-600">*</span>
-            </label>
-            <select
-              name="shippingMethod"
-              value={formData.shippingMethod}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option>冷凍(乾冰)</option>
-              <option>冷藏</option>
-              <option>常溫</option>
-              <option>其他</option>
-            </select>
-            {/* 🆕 當選擇「其他」時顯示輸入框 */}
-            {formData.shippingMethod === '其他' && (
-              <input
-                type="text"
-                name="shippingMethodOther"
-                value={formData.shippingMethodOther}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 mt-2"
-                placeholder="請說明寄送方式"
-              />
-            )}            
+            />
           </div>
         </div>
+        {/* 🆕 分析需求區塊 (當選擇 RNAseq 分析時顯示) */}
+        {
+          isRNAseqAnalysis && (() => {
+            // 取得分析服務項目代碼
+            const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+            const selectedService = analysisItem?.services[0]?.service || '';
 
-        {/* 備註 */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            備註
-          </label>
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleInputChange}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
+            // 判斷顯示區塊 - 使用 startsWith 精確匹配服務代碼
+            // A204: 簡化的樣本表
+            // A205: 樣本表、差異表達分析閾值、差異表達分析比較組
+            // A206: 簡化的樣本表、客製化需求
+            // A207: 樣本表、差異表達分析閾值、差異表達分析比較組、客製化需求
 
-  // 渲染步驟4：簽名確認
-  // const renderStep4 = () => (
-  //   <div className="space-y-6">
-  //     <div className="border-2 border-purple-300 rounded-lg p-6 bg-purple-50">
-  //       <h3 className="text-xl font-bold text-gray-800 mb-6">委託人簽名確認</h3>
-  //       <div className="bg-white rounded-lg p-6 border-2 border-gray-200">
-  //         {!formData.signature ? (
-  //           <div className="text-center py-8">
-  //             <div className="mb-4">
-  //               <Edit3 size={48} className="mx-auto text-blue-600" />
-  //             </div>
-  //             <p className="text-gray-700 mb-2 font-medium">請簽名確認訂單內容無誤</p>
-  //             <p className="text-sm text-gray-500 mb-6">
-  //               支援手寫簽名 ✍️ 或上傳圖片 📤
-  //             </p>
-  //             <button
-  //               type="button"
-  //               // onClick={() => setShowSignaturePad(true)}
-  //               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-  //             >
-  //               <Edit3 size={20} />
-  //               開始簽名
-  //             </button>
-  //           </div>
-  //         ) : (
-  //           <div className="space-y-4">
-  //             <div className="flex items-center justify-between">
-  //               <p className="text-green-600 font-semibold flex items-center gap-2">
-  //                 <Check size={24} />
-  //                 已完成簽名
-  //               </p>
-  //               <div className="flex gap-2">
-  //                 <button
-  //                   type="button"
-  //                   // onClick={() => setShowSignaturePad(true)}
-  //                   className="px-4 py-2 text-sm border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50"
-  //                 >
-  //                   重新簽名
-  //                 </button>
-  //                 <button
-  //                   type="button"
-  //                   onClick={clearSignature}
-  //                   className="px-4 py-2 text-sm text-red-600 border-2 border-red-300 rounded-lg hover:bg-red-50"
-  //                 >
-  //                   清除簽名
-  //                 </button>
-  //               </div>
-  //             </div>
-  //             <div className="border-2 border-gray-300 rounded-lg p-4">
-  //               <img 
-  //                 src={formData.signature} 
-  //                 alt="委託人簽名" 
-  //                 className="max-w-full h-auto mx-auto"
-  //                 style={{ maxHeight: '150px' }}
-  //               />
-  //             </div>
-  //           </div>
-  //         )}
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
+            const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
+              selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
 
-  // 渲染步驟5：預覽與提交
-// 渲染步驟5：預覽與提交
-const renderStep4 = () => (
-  <div className="space-y-6">
-    <div className="border-2 border-indigo-300 rounded-lg p-6 bg-indigo-50">
-      <h3 className="text-xl font-bold text-gray-800 mb-6">訂單預覽</h3>
-      
-      <div className="bg-white rounded-lg p-6 space-y-6">
-        
-        {/* 1. 基本資訊 */}
-        <div className="border-b pb-4">
-          <h4 className="font-semibold text-gray-700 mb-3 text-lg">📋 基本資訊</h4>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">業務人員：</span>
-              <span className="text-gray-800">{formData.salesPerson}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">單位：</span>
-              <span className="text-gray-800">{formData.organization}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">負責人/主持人：</span>
-              <span className="text-gray-800">{formData.principalInvestigator}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">聯絡人：</span>
-              <span className="text-gray-800">{formData.contactPerson}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">聯絡電話：</span>
-              <span className="text-gray-800">{formData.contactPhone || '未填寫'}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">Email：</span>
-              <span className="text-gray-800">{formData.email}</span>
-            </div>
-            {formData.address && (
-              <div className="bg-gray-50 p-2 rounded col-span-2">
-                <span className="text-gray-600 font-medium">地址：</span>
-                <span className="text-gray-800">{formData.address}</span>
-              </div>
-            )}
-          </div>
-        </div>
+            const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
 
-        {/* 2. 發票資訊 */}
-        <div className="border-b pb-4">
-          <h4 className="font-semibold text-gray-700 mb-3 text-lg">🧾 發票資訊</h4>
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">抬頭：</span>
-              <span className="text-gray-800">{formData.invoiceTitle || '未填寫'}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">統編：</span>
-              <span className="text-gray-800">{formData.taxId || '未填寫'}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">發票聯數：</span>
-              <span className="text-gray-800">{formData.invoiceCopies}</span>
-            </div>
-          </div>
-        </div>
+            const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
 
-        {/* 3. 數據交付資訊 */}
-        <div className="border-b pb-4">
-          <h4 className="font-semibold text-gray-700 mb-3 text-lg">💾 數據交付資訊</h4>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">提供方式：</span>
-              <span className="text-gray-800">{formData.dataDeliveryMethod}</span>
-            </div>
-            {formData.dataDeliveryMethod === '國網中心下載' && formData.nchcAccount && (
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-gray-600 font-medium">國網帳號：</span>
-                <span className="text-gray-800">{formData.nchcAccount}</span>
-              </div>
-            )}
-            {formData.dataDeliveryMethod === 'HDD由專人遞送' && (
-              <>
-                {formData.deliveryAddress && (
-                  <div className="bg-gray-50 p-2 rounded col-span-2">
-                    <span className="text-gray-600 font-medium">交貨地址：</span>
-                    <span className="text-gray-800">{formData.deliveryAddress}</span>
+            // 🆕 A204 和 A206 的樣本表只顯示 Sample Name 和備註
+            // A205 和 A207 才顯示完整的分析組別欄位
+            const showAnalysisGroups = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
+            if (!showSampleTable) return null;
+
+            // 🆕 驗證分析組別一致性 (Real-time) - 使用 Shared Function
+            const { errors: analysisGroupErrors, warnings: analysisGroupWarnings, rowErrors: analysisGroupRowErrors } = showDEParams
+              ? validateAnalysisGroups(formData)
+              : { errors: {}, warnings: {}, rowErrors: {} };
+
+            return (
+              <div className="border-2 border-orange-300 rounded-lg p-6 bg-orange-50">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">分析需求</h3>
+
+                {/* 1. 樣本表 */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-3">樣本表</h4>
+                  {/* 🆕 提示：樣本來源 */}
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                    <p className="text-gray-700">💡 如果該樣本來自舊訂單，必須在「樣本來源」填入舊訂單之 PO</p>
                   </div>
-                )}
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-600 font-medium">收件人：</span>
-                  <span className="text-gray-800">{formData.recipient || '未填寫'}</span>
-                </div>
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-600 font-medium">收件電話：</span>
-                  <span className="text-gray-800">{formData.recipientPhone || '未填寫'}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* 4. 急件與樣品返還 */}
-        <div className="border-b pb-4">
-          <h4 className="font-semibold text-gray-700 mb-3 text-lg">⚡ 急件與樣品返還</h4>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className={`p-3 rounded border-2 ${formData.isUrgent ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'}`}>
-              <span className="text-gray-600 font-medium">急件狀態：</span>
-              <span className={`font-bold ml-2 ${formData.isUrgent ? 'text-red-600' : 'text-green-600'}`}>
-                {formData.isUrgent ? '急件（費用+10%）' : '正常件'}
-              </span>
-            </div>
-            <div className="bg-gray-50 p-3 rounded border-2 border-gray-200">
-              <span className="text-gray-600 font-medium">樣品返還：</span>
-              <span className="text-gray-800 ml-2">{formData.sampleReturn}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 5. 委託內容 */}
-        <div className="border-b pb-4">
-          <h4 className="font-semibold text-gray-700 mb-3 text-lg">📦 委託內容</h4>
-          <div className="space-y-3">
-            {formData.serviceItems.map((item, idx) => (
-              <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h5 className="font-semibold text-blue-800 mb-2">{item.category}</h5>
-                <div className="space-y-2">
-                  {item.services.map((service, sIdx) => (
-                    service.service && (
-                      <div key={sIdx} className="flex justify-between items-center text-sm bg-white p-2 rounded">
-                        <span className="text-gray-700">{service.service}</span>
-                        <span className="font-semibold text-blue-600">數量：{service.quantity}</span>
-                      </div>
-                    )
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 6. 送測樣品資訊 */}
-        <div className="border-b pb-4">
-          <h4 className="font-semibold text-gray-700 mb-3 text-lg">🧬 送測樣品資訊</h4>
-          
-          <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 font-medium">樣品類型：</span>
-              <span className="text-gray-800 font-semibold ml-2">{formData.sampleType}</span>
-            </div>
-            {formData.sampleType !== '無送樣' && (
-              <>
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-600 font-medium">樣品數量：</span>
-                  <span className="text-gray-800 ml-2">{formData.sampleCount}</span>
-                </div>
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-600 font-medium">保存方式：</span>
-                  <span className="text-gray-800 ml-2">{formData.preservationMethod}</span>
-                </div>
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-600 font-medium">物種：</span>
-                  <span className="text-gray-800 ml-2">{formData.species}</span>
-                </div>
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-600 font-medium">寄送方式：</span>
-                  <span className="text-gray-800 ml-2">{formData.shippingMethod}</span>
-                </div>
-                {formData.sampleType === 'Library' && (
-                  <div className="bg-gray-50 p-2 rounded">
-                    <span className="text-gray-600 font-medium">濃度測定：</span>
-                    <span className="text-gray-800 ml-2">{formData.libraryInfo.concMethod}</span>
-                  </div>
-                )}
-                {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && (
-                  <div className="bg-gray-50 p-2 rounded">
-                    <span className="text-gray-600 font-medium">濃度測定：</span>
-                    <span className="text-gray-800 ml-2">{formData.sampleInfo.concMethod}</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Library Sample Sheet 預覽 */}
-          {formData.sampleType === 'Library' && formData.libraryInfo.sampleSheet.some(row => row.sampleName) && (
-            <div className="mt-4">
-              <h5 className="font-semibold text-gray-700 mb-2">Sample Sheet</h5>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-blue-100">
-                      <th className="border p-2">序號</th>
-                      <th className="border p-2">Sample_Name</th>
-                      <th className="border p-2">Tube Label</th>
-                      <th className="border p-2">Conc (ng/ul)</th>
-                      <th className="border p-2">Vol (uL)</th>
-                      <th className="border p-2">NGS上機濃度</th>
-                      <th className="border p-2">預期定序量</th>
-                      <th className="border p-2">備註</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.libraryInfo.sampleSheet
-                      .filter(row => row.sampleName)
-                      .map((row, idx) => (
-                        <tr key={idx} className="bg-white">
-                          <td className="border p-2 text-center">{idx + 1}</td>
-                          <td className="border p-2">{row.sampleName}</td>
-                          <td className="border p-2">{row.tubeLabel}</td>
-                          <td className="border p-2">{row.conc}</td>
-                          <td className="border p-2">{row.vol}</td>
-                          <td className="border p-2">{row.ngsConc}</td>
-                          <td className="border p-2">{row.expectedSeq}</td>
-                          <td className="border p-2">{row.note}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {formData.libraryInfo.librarySampleSheet.some(row => row.sampleName) && (
-                <div className="mt-4">
-                  <h5 className="font-semibold text-gray-700 mb-2">Library Sample Sheet</h5>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
+                    <table className="w-full text-sm border-collapse bg-white">
                       <thead>
-                        <tr className="bg-blue-100">
-                          <th className="border p-2">序號</th>
-                          <th className="border p-2">Sample_Name</th>
-                          <th className="border p-2">Library Prep Kit</th>
-                          <th className="border p-2">Index Adapter Kit</th>
-                          <th className="border p-2">Set-Well Position</th>
-                          <th className="border p-2">Index 1 (i7)</th>
-                          <th className="border p-2">Index 2 (i5)</th>
-                          <th className="border p-2">備註</th>
-                          <th className="border p-2">Library</th>
+                        <tr className="bg-gray-100">
+                          <th className="border p-2 text-left min-w-[150px]">Sample Name <span className="text-red-600">*</span></th>
+                          {showAnalysisGroups && (
+                            <>
+                              <th className="border p-2 text-left min-w-[120px] bg-blue-50">分析組別一 <span className="text-red-600">*</span></th>
+                              <th className="border p-2 text-left min-w-[120px] bg-green-50">分析組別二</th>
+                              <th className="border p-2 text-left min-w-[120px] bg-yellow-50">分析組別三</th>
+                              <th className="border p-2 text-left min-w-[120px]">樣本來源</th>
+                            </>
+                          )}
+                          <th className="border p-2 text-left min-w-[150px]">備註</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {formData.libraryInfo.librarySampleSheet
-                          .filter(row => row.sampleName)
-                          .map((row, idx) => (
-                            <tr key={idx} className="bg-white">
-                              <td className="border p-2 text-center">{idx + 1}</td>
-                              <td className="border p-2">{row.sampleName}</td>
-                              <td className="border p-2">{row.libraryPrepKit}</td>
-                              <td className="border p-2">{row.indexAdapterKit}</td>
-                              <td className="border p-2">{row.setWellPosition}</td>
-                              <td className="border p-2">{row.index1Seq}</td>
-                              <td className="border p-2">{row.index2Seq}</td>
-                              <td className="border p-2">{row.note}</td>
-                              <td className="border p-2">{row.library}</td>
-                            </tr>
-                          ))}
+                        {(() => {
+                          const rows = formData.sampleType === 'Library'
+                            ? formData.libraryInfo.sampleSheet
+                            : formData.sampleInfo.sampleSheet;
+
+                          return rows.map((row, idx) => (
+                            row.sampleName && (
+                              <tr key={idx}>
+                                <td className="border p-2">{row.sampleName}</td>
+                                {showAnalysisGroups && (
+                                  <>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.analysisGroup1 || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], analysisGroup1: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className={`w-full px-2 py-1 border rounded ${fieldErrors.sampleSheet?.[idx]?.analysisGroup1
+                                          ? 'border-red-500 bg-red-50'
+                                          : 'border-gray-300'
+                                          }`}
+                                        placeholder={row.sampleName || ''}
+                                      />
+                                    </td>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.analysisGroup2 || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], analysisGroup2: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full px-2 py-1 border rounded"
+                                      />
+                                    </td>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.analysisGroup3 || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], analysisGroup3: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full px-2 py-1 border rounded"
+                                      />
+                                    </td>
+                                    <td className="border p-2">
+                                      <input
+                                        type="text"
+                                        value={row.sampleSource || ''}
+                                        onChange={(e) => {
+                                          const newSheet = [...rows];
+                                          newSheet[idx] = { ...newSheet[idx], sampleSource: e.target.value };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                              ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                              sampleSheet: newSheet
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full px-2 py-1 border rounded"
+                                        placeholder="例：TS00001"
+                                      />
+                                    </td>
+                                  </>
+                                )}
+                                <td className="border p-2">
+                                  <input
+                                    type="text"
+                                    value={row.analysisNote || ''}
+                                    onChange={(e) => {
+                                      const newSheet = [...rows];
+                                      newSheet[idx] = { ...newSheet[idx], analysisNote: e.target.value };
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        [formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo']: {
+                                          ...prev[formData.sampleType === 'Library' ? 'libraryInfo' : 'sampleInfo'],
+                                          sampleSheet: newSheet
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 border rounded"
+                                  />
+                                </td>
+                              </tr>
+                            )
+                          ));
+                        })()}
                       </tbody>
                     </table>
                   </div>
                 </div>
+
+                {/* 2. 差異表達分析閾值 */}
+                {
+                  showDEParams && (
+                    <div className="mb-6 p-4 bg-white rounded border border-orange-200">
+                      <h4 className="font-semibold text-gray-700 mb-3">差異表達分析閾值</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">|logFC| <span className="text-red-600">*</span></label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.analysisRequirements.deParams.logFC}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              analysisRequirements: {
+                                ...prev.analysisRequirements,
+                                deParams: { ...prev.analysisRequirements.deParams, logFC: e.target.value }
+                              }
+                            }))}
+                            className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.logFC ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                            placeholder="例如: 1.0"
+                          />
+                          {fieldErrors.analysisRequirements?.logFC && (
+                            <p className="text-xs text-red-600 mt-1">
+                              ⚠️ {fieldErrors.analysisRequirements.logFC}
+                            </p>
+                          )}
+                          {!fieldErrors.analysisRequirements?.logFC && (() => {
+                            const value = formData.analysisRequirements.deParams.logFC;
+                            if (value && !isNaN(value)) {
+                              const decimalPart = value.toString().split('.')[1];
+                              if (decimalPart && decimalPart.length > 1) {
+                                return (
+                                  <p className="text-xs text-red-600 mt-1">
+                                    ⚠️ 建議使用小數一位 (例如: 1.5)
+                                  </p>
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">P method <span className="text-red-600">*</span></label>
+                          <select
+                            value={formData.analysisRequirements.deParams.pMethod}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              analysisRequirements: {
+                                ...prev.analysisRequirements,
+                                deParams: { ...prev.analysisRequirements.deParams, pMethod: e.target.value }
+                              }
+                            }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="p-value">p-value</option>
+                            <option value="p-adjust">p-adjust</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">P cutoff <span className="text-red-600">*</span></label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value={formData.analysisRequirements.deParams.pCutoff}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              analysisRequirements: {
+                                ...prev.analysisRequirements,
+                                deParams: { ...prev.analysisRequirements.deParams, pCutoff: e.target.value }
+                              }
+                            }))}
+                            className={`w-full px-3 py-2 border rounded-md ${fieldErrors.analysisRequirements?.pCutoff ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                            placeholder="例如: 0.05"
+                          />
+                          {fieldErrors.analysisRequirements?.pCutoff && (
+                            <p className="text-xs text-red-600 mt-1">
+                              ⚠️ {fieldErrors.analysisRequirements.pCutoff}
+                            </p>
+                          )}
+                          {!fieldErrors.analysisRequirements?.pCutoff && (() => {
+                            const value = parseFloat(formData.analysisRequirements.deParams.pCutoff);
+                            if (!isNaN(value) && (value <= 0 || value >= 1)) {
+                              return (
+                                <p className="text-xs text-red-600 mt-1">
+                                  ⚠️ P cutoff 必須介於 0 和 1 之間 (0 {`<`} P {`<`} 1)
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                {/* 2.5 差異表達分析比較組 */}
+                {
+                  showDEParams && (() => {
+                    // 從樣本表中提取分析組別的唯一值
+                    const getUniqueValues = (columnName) => {
+                      const sampleSheet = formData.sampleType === 'Library'
+                        ? formData.libraryInfo.sampleSheet
+                        : formData.sampleInfo.sampleSheet;
+
+                      const values = sampleSheet
+                        .map(row => row[columnName])
+                        .filter(v => v && v.trim() !== '');
+                      return [...new Set(values)]; // 去重
+                    };
+
+                    const group1Options = getUniqueValues('analysisGroup1');
+                    const group2Options = getUniqueValues('analysisGroup2');
+                    const group3Options = getUniqueValues('analysisGroup3');
+
+                    return (
+                      <div className={`mb-6 p-4 bg-white rounded border ${Object.keys(analysisGroupErrors).length > 0 ? 'border-red-500' : 'border-orange-200'}`}>
+                        <h4 className="font-semibold text-gray-700 mb-3">差異表達分析比較組</h4>
+
+                        {/* 顯示即時錯誤訊息 (Blocking) */}
+                        {(Object.keys(analysisGroupErrors).length > 0 || Object.keys(analysisGroupRowErrors).length > 0) && (
+                          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                            {/* Group-level Errors */}
+                            {Object.values(analysisGroupErrors).map((err, i) => (
+                              <div key={`group-err-${i}`} className="flex items-center mb-1 last:mb-0">
+                                <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+                                {err}
+                              </div>
+                            ))}
+                            {/* Row-level Errors */}
+                            {Object.entries(analysisGroupRowErrors).map(([rowIdx, rowErr]) => (
+                              Object.entries(rowErr).map(([groupKey, msg], i) => {
+                                const groupLabels = {
+                                  analysisGroup1: '分析組別一',
+                                  analysisGroup2: '分析組別二',
+                                  analysisGroup3: '分析組別三'
+                                };
+                                return (
+                                  <div key={`row-err-${rowIdx}-${i}`} className="flex items-center mb-1 last:mb-0">
+                                    <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+                                    第 {parseInt(rowIdx) + 1} 列 [{groupLabels[groupKey] || groupKey}]: {msg}
+                                  </div>
+                                );
+                              })
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 顯示即時警告訊息 (Non-blocking) */}
+                        {Object.keys(analysisGroupWarnings).length > 0 && (
+                          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                            {Object.values(analysisGroupWarnings).map((warn, i) => (
+                              <div key={i} className="flex items-center">
+                                <AlertCircle size={16} className="mr-2" />
+                                {warn}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border-collapse bg-white table-fixed">
+                            <colgroup>
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                              <col className="w-1/6" />
+                            </colgroup>
+                            <thead>
+                              {(() => {
+                                const hasGroup1Error = analysisGroupErrors.analysisGroup1 || Object.values(analysisGroupRowErrors).some(row => row.analysisGroup1);
+                                const hasGroup2Error = analysisGroupErrors.analysisGroup2 || Object.values(analysisGroupRowErrors).some(row => row.analysisGroup2);
+                                const hasGroup3Error = analysisGroupErrors.analysisGroup3 || Object.values(analysisGroupRowErrors).some(row => row.analysisGroup3);
+
+                                return (
+                                  <tr>
+                                    <th colSpan="2" className={`border p-2 bg-blue-50 text-center ${hasGroup1Error ? 'border-red-500 border-2' : ''}`}>分析組別一</th>
+                                    <th colSpan="2" className={`border p-2 bg-green-50 text-center ${hasGroup2Error ? 'border-red-500 border-2' : ''}`}>分析組別二</th>
+                                    <th colSpan="2" className={`border p-2 bg-yellow-50 text-center ${hasGroup3Error ? 'border-red-500 border-2' : ''}`}>分析組別三</th>
+                                  </tr>
+                                );
+                              })()}
+                              <tr className="bg-gray-100">
+                                <th className="border p-2 text-center">Control</th>
+                                <th className="border p-2 text-center">Treatment</th>
+                                <th className="border p-2 text-center">Control</th>
+                                <th className="border p-2 text-center">Treatment</th>
+                                <th className="border p-2 text-center">Control</th>
+                                <th className="border p-2 text-center">Treatment</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {formData.analysisRequirements.comparisonGroups.map((row, rowIdx) => (
+                                <tr key={rowIdx}>
+                                  {/* 分析組別一 - Control */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group1Control}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group1Control = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group1Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別一 - Treatment */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group1Treatment}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group1Treatment = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup1 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group1Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別二 - Control */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group2Control}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group2Control = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group2Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別二 - Treatment */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group2Treatment}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group2Treatment = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup2 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group2Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別三 - Control */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group3Control}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group3Control = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group3Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  {/* 分析組別三 - Treatment */}
+                                  <td className="border p-2">
+                                    <select
+                                      value={row.group3Treatment}
+                                      onChange={(e) => {
+                                        const newGroups = [...formData.analysisRequirements.comparisonGroups];
+                                        newGroups[rowIdx].group3Treatment = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          analysisRequirements: {
+                                            ...prev.analysisRequirements,
+                                            comparisonGroups: newGroups
+                                          }
+                                        }));
+                                      }}
+                                      className={`w-full px-2 py-1 border rounded ${analysisGroupRowErrors[rowIdx]?.analysisGroup3 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                    >
+                                      <option value="">請選擇</option>
+                                      {group3Options.map((opt, i) => (
+                                        <option key={i} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // 🚫 限制最多 30 行
+                                if (formData.analysisRequirements.comparisonGroups.length >= 30) {
+                                  setMessage('⚠️ 差異表達分析比較組最多只能有 30 行');
+                                  setTimeout(() => setMessage(''), 3000);
+                                  return;
+                                }
+
+                                setFormData(prev => ({
+                                  ...prev,
+                                  analysisRequirements: {
+                                    ...prev.analysisRequirements,
+                                    comparisonGroups: [
+                                      ...prev.analysisRequirements.comparisonGroups,
+                                      { group1Control: '', group1Treatment: '', group2Control: '', group2Treatment: '', group3Control: '', group3Treatment: '' }
+                                    ]
+                                  }
+                                }));
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 border border-blue-300"
+                            >
+                              <Plus size={14} />
+                              新增比較組
+                            </button>
+                            {formData.analysisRequirements.comparisonGroups.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    analysisRequirements: {
+                                      ...prev.analysisRequirements,
+                                      comparisonGroups: prev.analysisRequirements.comparisonGroups.slice(0, -1)
+                                    }
+                                  }));
+                                }}
+                                className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 border border-red-300"
+                              >
+                                <Trash2 size={14} />
+                                刪除最後一筆
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
+
+                {/* 3. 客製化需求 */}
+                {
+                  showCustomReq && (
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-3">客製化需求</h4>
+                      <textarea
+                        value={formData.analysisRequirements.customRequirements}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          analysisRequirements: {
+                            ...prev.analysisRequirements,
+                            customRequirements: e.target.value
+                          }
+                        }))}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500"
+                        placeholder="請詳細描述您的客製化分析需求..."
+                      />
+                    </div>
+                  )
+                }
+              </div>
+            );
+          })()
+        }
+
+      </div >
+    );
+  };
+
+
+  // 渲染步驟5：預覽與提交
+  const renderStep4 = () => (
+    <div className="space-y-6">
+      <div className="border-2 border-indigo-300 rounded-lg p-6 bg-indigo-50">
+        <h3 className="text-xl font-bold text-gray-800 mb-6">訂單預覽</h3>
+
+        <div className="bg-white rounded-lg p-6 space-y-6">
+
+          {/* 1. 基本資訊 */}
+          <div className="border-b pb-4">
+            <h4 className="font-semibold text-gray-700 mb-3 text-lg">📋 基本資訊</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">業務人員：</span>
+                <span className="text-gray-800">{formData.salesPerson}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">單位：</span>
+                <span className="text-gray-800">{formData.organization}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">負責人/主持人：</span>
+                <span className="text-gray-800">{formData.principalInvestigator}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">聯絡人：</span>
+                <span className="text-gray-800">{formData.contactPerson}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">聯絡電話：</span>
+                <span className="text-gray-800">{formData.contactPhone || '未填寫'}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">Email：</span>
+                <span className="text-gray-800">{formData.email}</span>
+              </div>
+              {formData.address && (
+                <div className="bg-gray-50 p-2 rounded col-span-2">
+                  <span className="text-gray-600 font-medium">地址：</span>
+                  <span className="text-gray-800">{formData.address}</span>
+                </div>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Sample (DNA/RNA/Cell/Blood) Sheet 預覽 */}
-          {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && 
-           formData.sampleInfo.sampleSheet.some(row => row.sampleName) && (
-            <div className="mt-4">
-              <h5 className="font-semibold text-gray-700 mb-2">Sample Sheet</h5>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-green-100">
-                      <th className="border p-2">序號</th>
-                      <th className="border p-2">Sample_Name</th>
-                      <th className="border p-2">Tube Label</th>
-                      <th className="border p-2">預期定序量</th>
-                      <th className="border p-2">Conc (ng/ul)</th>
-                      <th className="border p-2">Vol (uL)</th>
-                      <th className="border p-2">260/280</th>
-                      <th className="border p-2">260/230</th>
-                      <th className="border p-2">DQN/RQN</th>
-                      <th className="border p-2">備註</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.sampleInfo.sampleSheet
-                      .filter(row => row.sampleName)
-                      .map((row, idx) => (
-                        <tr key={idx} className="bg-white">
-                          <td className="border p-2 text-center">{idx + 1}</td>
-                          <td className="border p-2">{row.sampleName}</td>
-                          <td className="border p-2">{row.tubeLabel}</td>
-                          <td className="border p-2">{row.expectedSeq}</td>
-                          <td className="border p-2">{row.conc}</td>
-                          <td className="border p-2">{row.vol}</td>
-                          <td className="border p-2">{row.ratio260280}</td>
-                          <td className="border p-2">{row.ratio260230}</td>
-                          <td className="border p-2">{row.dqnRqn}</td>
-                          <td className="border p-2">{row.note}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+          {/* 2. 發票資訊 */}
+          <div className="border-b pb-4">
+            <h4 className="font-semibold text-gray-700 mb-3 text-lg">🧾 發票資訊</h4>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">抬頭：</span>
+                <span className="text-gray-800">{formData.invoiceTitle || '未填寫'}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">統編：</span>
+                <span className="text-gray-800">{formData.taxId || '未填寫'}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">發票聯數：</span>
+                <span className="text-gray-800">{formData.invoiceCopies}</span>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* 3. 數據交付資訊 */}
+          <div className="border-b pb-4">
+            <h4 className="font-semibold text-gray-700 mb-3 text-lg">💾 數據交付資訊</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">提供方式：</span>
+                <span className="text-gray-800">{formData.dataDeliveryMethod}</span>
+              </div>
+              {formData.dataDeliveryMethod === '國網中心下載' && formData.nchcAccount && (
+                <div className="bg-gray-50 p-2 rounded">
+                  <span className="text-gray-600 font-medium">國網帳號：</span>
+                  <span className="text-gray-800">{formData.nchcAccount}</span>
+                </div>
+              )}
+              {formData.dataDeliveryMethod === 'HDD由專人遞送' && (
+                <>
+                  {formData.deliveryAddress && (
+                    <div className="bg-gray-50 p-2 rounded col-span-2">
+                      <span className="text-gray-600 font-medium">交貨地址：</span>
+                      <span className="text-gray-800">{formData.deliveryAddress}</span>
+                    </div>
+                  )}
+                  <div className="bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 font-medium">收件人：</span>
+                    <span className="text-gray-800">{formData.recipient || '未填寫'}</span>
+                  </div>
+                  <div className="bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 font-medium">收件電話：</span>
+                    <span className="text-gray-800">{formData.recipientPhone || '未填寫'}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 4. 急件與樣品返還 */}
+          <div className="border-b pb-4">
+            <h4 className="font-semibold text-gray-700 mb-3 text-lg">⚡ 急件與樣品返還</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className={`p - 3 rounded border - 2 ${formData.isUrgent ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'} `}>
+                <span className="text-gray-600 font-medium">急件狀態：</span>
+                <span className={`font - bold ml - 2 ${formData.isUrgent ? 'text-red-600' : 'text-green-600'} `}>
+                  {formData.isUrgent ? '急件（費用+10%）' : '正常件'}
+                </span>
+              </div>
+              <div className="bg-gray-50 p-3 rounded border-2 border-gray-200">
+                <span className="text-gray-600 font-medium">樣品返還：</span>
+                <span className="text-gray-800 ml-2">{formData.sampleReturn}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. 委託內容 */}
+          <div className="border-b pb-4">
+            <h4 className="font-semibold text-gray-700 mb-3 text-lg">📦 委託內容</h4>
+            <div className="space-y-3">
+              {formData.serviceItems.map((item, idx) => (
+                <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h5 className="font-semibold text-blue-800 mb-2">{item.category}</h5>
+                  <div className="space-y-2">
+                    {item.services.map((service, sIdx) => (
+                      service.service && (
+                        <div key={sIdx} className="flex justify-between items-center text-sm bg-white p-2 rounded">
+                          <span className="text-gray-700">{service.service}</span>
+                          <span className="font-semibold text-blue-600">數量：{service.quantity}</span>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. 送測樣品資訊 */}
+          <div className="border-b pb-4">
+            <h4 className="font-semibold text-gray-700 mb-3 text-lg">🧬 送測樣品資訊</h4>
+
+            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 font-medium">樣品類型：</span>
+                <span className="text-gray-800 font-semibold ml-2">{formData.sampleType}</span>
+              </div>
+              {formData.sampleType !== '無送樣' && (
+                <>
+                  <div className="bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 font-medium">樣品數量：</span>
+                    <span className="text-gray-800 ml-2">{formData.sampleCount}</span>
+                  </div>
+                  <div className="bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 font-medium">保存方式：</span>
+                    <span className="text-gray-800 ml-2">{formData.preservationMethod}</span>
+                  </div>
+                  <div className="bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 font-medium">物種：</span>
+                    <span className="text-gray-800 ml-2">{formData.species}</span>
+                  </div>
+                  <div className="bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 font-medium">寄送方式：</span>
+                    <span className="text-gray-800 ml-2">{formData.shippingMethod}</span>
+                  </div>
+                  {formData.sampleType === 'Library' && (
+                    <div className="bg-gray-50 p-2 rounded">
+                      <span className="text-gray-600 font-medium">濃度測定：</span>
+                      <span className="text-gray-800 ml-2">{formData.libraryInfo.concMethod}</span>
+                    </div>
+                  )}
+                  {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && (
+                    <div className="bg-gray-50 p-2 rounded">
+                      <span className="text-gray-600 font-medium">濃度測定：</span>
+                      <span className="text-gray-800 ml-2">{formData.sampleInfo.concMethod}</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Library Sample Sheet 預覽 */}
+            {formData.sampleType === 'Library' && formData.libraryInfo.sampleSheet.some(row => row.sampleName) && (
+              <div className="mt-4">
+                <h5 className="font-semibold text-gray-700 mb-2">Sample Sheet</h5>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-blue-100">
+                        <th className="border p-2">序號</th>
+                        <th className="border p-2">Sample_Name</th>
+                        <th className="border p-2">Tube Label</th>
+                        <th className="border p-2">Conc (ng/ul)</th>
+                        <th className="border p-2">Vol (uL)</th>
+                        <th className="border p-2">NGS上機濃度</th>
+                        <th className="border p-2">預期定序量</th>
+                        <th className="border p-2">備註</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.libraryInfo.sampleSheet
+                        .filter(row => row.sampleName)
+                        .map((row, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="border p-2 text-center">{idx + 1}</td>
+                            <td className="border p-2">{row.sampleName}</td>
+                            <td className="border p-2">{row.tubeLabel}</td>
+                            <td className="border p-2">{row.conc}</td>
+                            <td className="border p-2">{row.vol}</td>
+                            <td className="border p-2">{row.ngsConc}</td>
+                            <td className="border p-2">{row.expectedSeq}</td>
+                            <td className="border p-2">{row.note}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {formData.libraryInfo.librarySampleSheet.some(row => row.sampleName) && (
+                  <div className="mt-4">
+                    <h5 className="font-semibold text-gray-700 mb-2">Library Sample Sheet</h5>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-blue-100">
+                            <th className="border p-2">序號</th>
+                            <th className="border p-2">Sample_Name</th>
+                            <th className="border p-2">Library Prep Kit</th>
+                            <th className="border p-2">Index Adapter Kit</th>
+                            <th className="border p-2">Set-Well Position</th>
+                            <th className="border p-2">Index 1 (i7)</th>
+                            <th className="border p-2">Index 2 (i5)</th>
+                            <th className="border p-2">備註</th>
+                            <th className="border p-2">Library</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.libraryInfo.librarySampleSheet
+                            .filter(row => row.sampleName)
+                            .map((row, idx) => (
+                              <tr key={idx} className="bg-white">
+                                <td className="border p-2 text-center">{idx + 1}</td>
+                                <td className="border p-2">{row.sampleName}</td>
+                                <td className="border p-2">{row.libraryKit}</td>
+                                <td className="border p-2">{row.indexKit}</td>
+                                <td className="border p-2">{row.wellPosition}</td>
+                                <td className="border p-2">{row.index1Seq}</td>
+                                <td className="border p-2">{row.index2Seq}</td>
+                                <td className="border p-2">{row.note}</td>
+                                <td className="border p-2">{row.library}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 一般 Sample Sheet 預覽 */}
+            {formData.sampleType !== 'Library' && formData.sampleType !== '無送樣' && formData.sampleInfo.sampleSheet.some(row => row.sampleName) && (
+              <div className="mt-4">
+                <h5 className="font-semibold text-gray-700 mb-2">Sample Sheet</h5>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-blue-100">
+                        <th className="border p-2">序號</th>
+                        <th className="border p-2">Sample_Name</th>
+                        <th className="border p-2">Tube Label</th>
+                        <th className="border p-2">預期定序量</th>
+                        <th className="border p-2">Conc (ng/ul)</th>
+                        <th className="border p-2">Vol (uL)</th>
+                        <th className="border p-2">OD 260/280</th>
+                        <th className="border p-2">OD 260/230</th>
+                        {formData.sampleType === 'RNA' && <th className="border p-2">RQN/RIN</th>}
+                        {formData.sampleType === 'DNA' && <th className="border p-2">DQN/DIN</th>}
+                        <th className="border p-2">備註</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.sampleInfo.sampleSheet
+                        .filter(row => row.sampleName)
+                        .map((row, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="border p-2 text-center">{idx + 1}</td>
+                            <td className="border p-2">{row.sampleName}</td>
+                            <td className="border p-2">{row.tubeLabel}</td>
+                            <td className="border p-2">{row.expectedSeq}</td>
+                            <td className="border p-2">{row.conc}</td>
+                            <td className="border p-2">{row.vol}</td>
+                            <td className="border p-2">{row.ratio260280}</td>
+                            <td className="border p-2">{row.ratio260230}</td>
+                            {(formData.sampleType === 'RNA' || formData.sampleType === 'DNA') && (
+                              <td className="border p-2">{row.dqnRqn}</td>
+                            )}
+                            <td className="border p-2">{row.note}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 7. 分析需求預覽 (若有選擇分析服務) */}
+          {formData.selectedServiceCategories.includes('分析服務 (A)') && (() => {
+            const analysisItem = formData.serviceItems.find(item => item.category === '分析服務 (A)');
+            const selectedService = analysisItem?.services[0]?.service || '';
+
+            // 判斷顯示區塊
+            const showSampleTable = selectedService.startsWith('A204 ') || selectedService.startsWith('A205 ') ||
+              selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
+            const showDEParams = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+            const showCustomReq = selectedService.startsWith('A206 ') || selectedService.startsWith('A207 ');
+            // 🆕 A204 和 A206 只顯示 Sample Name 和備註
+            const showAnalysisGroups = selectedService.startsWith('A205 ') || selectedService.startsWith('A207 ');
+
+            if (!showSampleTable) return null;
+
+            // 取得樣本表資料
+            const sampleSheet = formData.sampleType === 'Library'
+              ? formData.libraryInfo.sampleSheet
+              : formData.sampleInfo.sampleSheet;
+
+            return (
+              <div className="border-b pb-4">
+                <h4 className="font-semibold text-gray-700 mb-3 text-lg">📊 分析需求</h4>
+
+                {/* 0. 物種資訊預覽 */}
+                <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+                  <h5 className="font-semibold text-gray-700 mb-2">物種資訊</h5>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-600">物種：</span>
+                      <span className="text-gray-800">
+                        {formData.species === '其他' ? formData.speciesOther : formData.species}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">學名：</span>
+                      <span className="text-gray-800 italic">
+                        {formData.species === '其他'
+                          ? formData.speciesOtherScientificName
+                          : formData.speciesScientificName}
+                      </span>
+                    </div>
+                    {formData.species === '其他' && formData.speciesOtherReferenceGenome && (
+                      <div>
+                        <span className="font-medium text-gray-600">參考基因組：</span>
+                        <span className="text-gray-800">{formData.speciesOtherReferenceGenome}</span>
+                      </div>
+                    )}
+                    {formData.speciesReferenceGenome && (
+                      <div className="col-span-2">
+                        <span className="font-medium text-gray-600">參考基因組：</span>
+                        <span className="text-gray-800">{formData.speciesReferenceGenome}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 1. 樣本表預覽 */}
+                {sampleSheet.some(row => row.sampleName) && (
+                  <div className="mb-4">
+                    <h5 className="font-semibold text-gray-700 mb-2">樣本表</h5>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border p-2">Sample Name</th>
+                            {showAnalysisGroups && (
+                              <>
+                                <th className="border p-2 bg-blue-50">分析組別一</th>
+                                <th className="border p-2 bg-green-50">分析組別二</th>
+                                <th className="border p-2 bg-yellow-50">分析組別三</th>
+                                <th className="border p-2">樣本來源</th>
+                              </>
+                            )}
+                            <th className="border p-2">備註</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sampleSheet
+                            .filter(row => row.sampleName)
+                            .map((row, idx) => (
+                              <tr key={idx} className="bg-white">
+                                <td className="border p-2">{row.sampleName}</td>
+                                {showAnalysisGroups && (
+                                  <>
+                                    <td className="border p-2">{row.analysisGroup1 || '-'}</td>
+                                    <td className="border p-2">{row.analysisGroup2 || '-'}</td>
+                                    <td className="border p-2">{row.analysisGroup3 || '-'}</td>
+                                    <td className="border p-2">{row.sampleSource || '-'}</td>
+                                  </>
+                                )}
+                                <td className="border p-2">{row.analysisNote || '-'}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. 差異表達分析閾值預覽 */}
+                {showDEParams && (
+                  <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+                    <h5 className="font-semibold text-gray-700 mb-2">差異表達分析閾值</h5>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-600">|logFC|: </span>
+                        <span className="text-gray-800">{formData.analysisRequirements.deParams.logFC}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">P method: </span>
+                        <span className="text-gray-800">{formData.analysisRequirements.deParams.pMethod}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">P cutoff: </span>
+                        <span className="text-gray-800">{formData.analysisRequirements.deParams.pCutoff}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. 差異表達分析比較組預覽 */}
+                {showDEParams && formData.analysisRequirements.comparisonGroups.length > 0 &&
+                  formData.analysisRequirements.comparisonGroups.some(g => g.group1Control || g.group1Treatment) && (
+                    <div className="mb-4">
+                      <h5 className="font-semibold text-gray-700 mb-2">差異表達分析比較組</h5>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border-collapse table-fixed">
+                          <colgroup>
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                            <col className="w-1/6" />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th colSpan="2" className="border p-2 bg-blue-50 text-center">分析組別一</th>
+                              <th colSpan="2" className="border p-2 bg-green-50 text-center">分析組別二</th>
+                              <th colSpan="2" className="border p-2 bg-yellow-50 text-center">分析組別三</th>
+                            </tr>
+                            <tr className="bg-gray-100">
+                              <th className="border p-2 text-center">Control</th>
+                              <th className="border p-2 text-center">Treatment</th>
+                              <th className="border p-2 text-center">Control</th>
+                              <th className="border p-2 text-center">Treatment</th>
+                              <th className="border p-2 text-center">Control</th>
+                              <th className="border p-2 text-center">Treatment</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.analysisRequirements.comparisonGroups.map((row, idx) => (
+                              <tr key={idx} className="bg-white">
+                                <td className="border p-2 text-center">{row.group1Control || '-'}</td>
+                                <td className="border p-2 text-center">{row.group1Treatment || '-'}</td>
+                                <td className="border p-2 text-center">{row.group2Control || '-'}</td>
+                                <td className="border p-2 text-center">{row.group2Treatment || '-'}</td>
+                                <td className="border p-2 text-center">{row.group3Control || '-'}</td>
+                                <td className="border p-2 text-center">{row.group3Treatment || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                {/* 4. 客製化需求預覽 */}
+                {showCustomReq && formData.analysisRequirements.customRequirements && (
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <h5 className="font-semibold text-gray-700 mb-1">客製化需求</h5>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{formData.analysisRequirements.customRequirements}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 備註 */}
           {formData.notes && (
@@ -5031,10 +6382,9 @@ const renderStep4 = () => (
               <p className="text-gray-800 mt-1">{formData.notes}</p>
             </div>
           )}
-        </div>
 
-        {/* 7. 簽名確認 */}
-        {/* <div>
+          {/* 7. 簽名確認 */}
+          {/* <div>
           <h4 className="font-semibold text-gray-700 mb-3 text-lg">✍️ 簽名確認</h4>
           {formData.signature ? (
             <div className="border-2 border-green-300 rounded-lg p-4 bg-green-50">
@@ -5057,17 +6407,22 @@ const renderStep4 = () => (
           )}
         </div> */}
 
-      </div>
+        </div>
 
-      <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
-        <p className="text-sm text-gray-700 flex items-center gap-2">
-          <AlertCircle size={18} />
-          ⚠️ 請確認所有資訊無誤後再提交訂單。提交後可匯出 Excel 檔案。
-        </p>
+        {/* 提示訊息 */}
+        <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+          <p className="text-sm text-gray-700 flex items-center gap-2">
+            <AlertCircle size={18} />
+            ⚠️ 請確認所有資訊無誤後再提交訂單。提交後可匯出 Excel 檔案。
+          </p>
+        </div>
+
+
+
+
       </div>
     </div>
-  </div>
-);
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8 px-4">
@@ -5084,7 +6439,7 @@ const renderStep4 = () => (
         </div>
 
         {/* 步驟進度條 */}
-        <StepIndicator currentStep={currentStep} steps={steps} isLocked={isLocked}/>
+        <StepIndicator currentStep={currentStep} steps={steps} isLocked={isLocked} />
 
         {/* 表單內容 */}
         <div className="min-h-[500px]">
@@ -5111,8 +6466,8 @@ const renderStep4 = () => (
               ${currentStep === 0
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : isLocked
-                ? 'bg-gray-400 text-white cursor-not-allowed'   // 🔒 鎖定狀態
-                : 'bg-gray-500 text-white hover:bg-gray-600'    // ✅ 正常狀態
+                  ? 'bg-gray-400 text-white cursor-not-allowed'   // 🔒 鎖定狀態
+                  : 'bg-gray-500 text-white hover:bg-gray-600'    // ✅ 正常狀態
               }`}
           >
             <ChevronLeft size={20} />
@@ -5123,7 +6478,7 @@ const renderStep4 = () => (
             步驟 {currentStep + 1} / {steps.length} {/* 🆕 顯示時 +1 */}
           </div>
 
-          {currentStep < steps.length - 1 ? ( 
+          {currentStep < steps.length - 1 ? (
             <button
               onClick={nextStep}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition"
@@ -5132,28 +6487,47 @@ const renderStep4 = () => (
               <ChevronRight size={20} />
             </button>
           ) : (
-          <button
-            onClick={handleSubmit}
-            disabled={isLocked}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition 
-              ${isLocked 
-                ? 'bg-gray-400 text-white cursor-not-allowed'   // 🔒 鎖定狀態
-                : 'bg-green-600 hover:bg-green-700 text-white'} // ✅ 正常狀態
-            `}
-          >
-            <Send size={20} />
-            {isLocked ? '需求已提交' : '提交需求'}
-          </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isLocked}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition 
+              ${isLocked
+                  ? 'bg-gray-400 text-white cursor-not-allowed'   // 🔒 鎖定狀態
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+                } // ✅ 正常狀態
+                                        `}
+            >
+              <Send size={20} />
+              {isLocked ? '需求已提交' : '提交需求'}
+            </button>
           )}
         </div>
 
+        {/* 🆕 重新填寫按鈕 (移至此处，靠右，位於提交按鈕下方) */}
+        {exportReady && (
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => {
+                if (window.confirm('即將捨棄所有填寫紀錄，確定要回到登入頁面嗎？')) {
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              重新填寫
+            </button>
+          </div>
+        )}
+
+
+
         {/* 訊息提示 */}
         {message && (
-          <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${
-            submitted || message.includes('成功') 
-              ? 'bg-green-50 border border-green-200 text-green-800' 
-              : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
-          }`}>
+          <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${submitted || message.includes('成功')
+            ? 'bg-green-50 border border-green-200 text-green-800'
+            : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+            } `}>
             <AlertCircle size={20} />
             <span>{message}</span>
           </div>
@@ -5161,13 +6535,28 @@ const renderStep4 = () => (
 
         {/* 匯出按鈕（提交後顯示） */}
         {exportReady && (
-          <button
-            onClick={exportToExcel}
-            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition"
-          >
-            <Download size={20} />
-            匯出 Excel
-          </button>
+          <div className="flex justify-center gap-4 mt-4">
+            <button
+              onClick={exportToExcel}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition"
+            >
+              <Download size={20} />
+              匯出 Excel
+            </button>
+
+            {/* 🆕 匯出分析需求單按鈕 */}
+            {formData.selectedServiceCategories.includes('分析服務 (A)') && (
+              <button
+                onClick={exportAnalysisRequest}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                匯出分析需求單
+              </button>
+            )}
+
+
+          </div>
         )}
       </div>
 
@@ -5185,7 +6574,7 @@ const renderStep4 = () => (
         <p>tgia_ngs@tgiainc.com ｜ 03 667 0079</p>
         <p>地址：02新竹縣竹北市生醫五路66號8樓-6</p>
         <p className="text-xs text-gray-500 mt-2">© 2025 TGIA Inc. All rights reserved.</p>
-      </footer>  
+      </footer>
     </div>
   );
 };
