@@ -37,6 +37,10 @@ router.get('/:orderId/export-analysis', async (req, res) => {
         }
 
         // 1. 基本資料填寫
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        sheet.cell('F5').value(dateStr);
+
         if (orderData.salesPerson) sheet.cell('D5').value(orderData.salesPerson);
         if (orderData.organization) sheet.cell('B7').value(orderData.organization);
         if (orderData.principalInvestigator) sheet.cell('D7').value(orderData.principalInvestigator);
